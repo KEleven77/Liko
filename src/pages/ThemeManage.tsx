@@ -402,22 +402,21 @@ function SettingSelect({
   );
 }
 
-type ThemeTabId = "appearance" | "home" | "card" | "cost" | "ping";
+type ThemeTabId = "home" | "card" | "cost" | "ping";
 
 const THEME_TABS: ReadonlyArray<{
   id: ThemeTabId;
   label: string;
   hint: string;
-  icon: typeof LayoutTemplate;
+  icon: typeof ListFilter;
 }> = [
-  { id: "appearance", label: "外观", hint: "外观、视图、背景媒体、透明度", icon: LayoutTemplate },
-  { id: "home", label: "首页", hint: "总览、分组、排序、隐藏节点", icon: ListFilter },
+  { id: "home", label: "首页", hint: "外观、视图、总览、排序、隐藏节点", icon: ListFilter },
   { id: "card", label: "卡片", hint: "卡片上显示哪些信息与悬浮窗", icon: Rows3 },
   { id: "cost", label: "花费", hint: "资产统计与收购溢价", icon: CircleDollarSign },
   { id: "ping", label: "延迟", hint: "多线路与逐节点指定", icon: Activity },
 ];
 
-const DEFAULT_THEME_TAB: ThemeTabId = "appearance";
+const DEFAULT_THEME_TAB: ThemeTabId = "home";
 
 function isThemeTabId(value: string | null): value is ThemeTabId {
   return value != null && THEME_TABS.some((tab) => tab.id === value);
@@ -1357,7 +1356,7 @@ export function ThemeManage() {
         </nav>
 
         <div className="theme-manage-sections" ref={sectionsRef}>
-          {activeTab === "appearance" && (
+          {activeTab === "home" && (
             <>
               <InstancePanel
                 kicker="外观"
@@ -1439,11 +1438,7 @@ export function ThemeManage() {
                   </div>
                 </div>
               </InstancePanel>
-            </>
-          )}
 
-          {activeTab === "home" && (
-            <>
               <InstancePanel
                 kicker="总览"
                 title="首页顶部组件"
