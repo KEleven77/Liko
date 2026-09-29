@@ -7,7 +7,6 @@ import {
   ChevronUp,
   CircleDollarSign,
   Grid3x3,
-  ImageIcon,
   LayoutTemplate,
   LayoutGrid,
   List,
@@ -21,8 +20,6 @@ import {
   Square,
   Sun,
   SunMoon,
-  Video,
-  Wallpaper,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { InstancePanel } from "@/components/instance/InstancePanel";
@@ -39,15 +36,6 @@ import {
   saveThemeSettings,
 } from "@/services/api";
 import type { AdminClient, PingTask, ThemeSettings } from "@/types/komari";
-import {
-  DEFAULT_BACKGROUND_VIDEO_URL,
-  type BackgroundPosition,
-  type BackgroundSize,
-  normalizeBackgroundAlignment,
-  normalizeBackgroundUrl,
-  normalizeBackgroundVideoUrl,
-  parseBackgroundAlignment,
-} from "@/utils/background";
 import {
   calculateCostSummary,
   calculateCostPremiumAmount,
@@ -79,7 +67,6 @@ import {
 import {
   DEFAULT_THEME_SETTINGS,
   normalizeThemeSettings,
-  type BackgroundMediaType,
   type ResolvedThemeSettings,
 } from "@/utils/themeSettings";
 import {
@@ -100,24 +87,6 @@ const NODE_VIEW_MODE_OPTIONS = [
   { value: "list", label: "列表", icon: List },
 ] as const;
 const MOBILE_VIEW_MODE_OPTIONS = NODE_VIEW_MODE_OPTIONS.filter((option) => option.value !== "list");
-const BACKGROUND_MEDIA_TYPE_OPTIONS: Array<{
-  value: BackgroundMediaType;
-  label: string;
-  icon: typeof ImageIcon;
-}> = [
-  { value: "image", label: "图片", icon: ImageIcon },
-  { value: "video", label: "视频", icon: Video },
-];
-const BACKGROUND_SIZE_OPTIONS: Array<{ value: BackgroundSize; label: string }> = [
-  { value: "cover", label: "填满" },
-  { value: "contain", label: "完整" },
-  { value: "auto", label: "原始" },
-];
-const BACKGROUND_POSITION_OPTIONS: Array<{ value: BackgroundPosition; label: string }> = [
-  { value: "top", label: "顶部" },
-  { value: "center", label: "居中" },
-  { value: "bottom", label: "底部" },
-];
 
 function localDateInputMax() {
   const now = new Date();
@@ -330,14 +299,6 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
         .map((uuid) => [uuid, settings.costPremiums[uuid]]),
     ),
     costRateApiUrl: settings.costRateApiUrl,
-    enableBackgroundImage: settings.enableBackgroundImage,
-    backgroundMediaType: settings.backgroundMediaType,
-    backgroundImage: settings.backgroundImage,
-    backgroundImageMobile: settings.backgroundImageMobile,
-    backgroundVideo: settings.backgroundVideo,
-    backgroundVideoDark: settings.backgroundVideoDark,
-    backgroundAlignment: settings.backgroundAlignment,
-    surfaceOpacity: settings.surfaceOpacity,
   };
 }
 
@@ -1143,18 +1104,6 @@ export function ThemeManage() {
   // 由当前草稿拼出的设置 payload,保存请求和 dirty 判断都用它。草稿字段与设置同名,这里只做
   // 「编辑态 → 存储态」的换形与归一化;文本域(hiddenNodesText/costIgnoredText)和 ratingLabels
   // 解构出来换回存储字段,其余原样透传。
-  const normalizedBackgroundVideo = normalizeBackgroundVideoUrl(draft.backgroundVideo);
-  const normalizedBackgroundVideoDark = normalizeBackgroundVideoUrl(draft.backgroundVideoDark);
-  const backgroundVideoLightMalformed =
-    draft.backgroundVideo.trim() !== "" && !normalizedBackgroundVideo;
-  const backgroundVideoDarkInvalid =
-    draft.backgroundVideoDark.trim() !== "" && !normalizedBackgroundVideoDark;
-  const backgroundVideoLightInvalid =
-    draft.backgroundMediaType === "video" && !normalizedBackgroundVideo;
-  const videoInputInvalid =
-    draft.backgroundMediaType === "video" &&
-    (!normalizedBackgroundVideo || backgroundVideoDarkInvalid);
-
   const draftThemeSettings = useMemo<ThemeSettings>(() => {
     const {
       ratingLabels,
@@ -1173,25 +1122,8 @@ export function ThemeManage() {
       costIgnoredNodes: normalizeCostIgnoredNodes(costIgnoredText),
       costPremiums: normalizeCostPremiums(rest.costPremiums),
       costRateApiUrl: normalizeCostRateApiUrl(rest.costRateApiUrl),
-      backgroundImage: normalizeBackgroundUrl(rest.backgroundImage),
-      backgroundImageMobile: normalizeBackgroundUrl(rest.backgroundImageMobile),
-      backgroundVideo: backgroundVideoLightMalformed
-        ? sourceThemeSettings.backgroundVideo
-        : normalizedBackgroundVideo || DEFAULT_BACKGROUND_VIDEO_URL,
-      backgroundVideoDark: backgroundVideoDarkInvalid
-        ? sourceThemeSettings.backgroundVideoDark
-        : normalizedBackgroundVideoDark,
-      backgroundAlignment: normalizeBackgroundAlignment(rest.backgroundAlignment),
     };
-  }, [
-    backgroundVideoDarkInvalid,
-    backgroundVideoLightMalformed,
-    draft,
-    normalizedBackgroundVideo,
-    normalizedBackgroundVideoDark,
-    sourceThemeSettings.backgroundVideo,
-    sourceThemeSettings.backgroundVideoDark,
-  ]);
+  }, [draft]);
 
   // 只比较本页实际管理的设置。enableAdminButton/showPingChart 这类隐藏设置会通过
   // baseSettings 在保存时保留,但不该让表单永远显示为 dirty。
@@ -1206,8 +1138,7 @@ export function ThemeManage() {
     draft.costRateApiUrl.trim() !== sourceThemeSettings.costRateApiUrl;
   const isDirty =
     draftSignature !== sourceSignature ||
-    costRateApiUrlDirty ||
-    videoInputInvalid;
+    costRateApiUrlDirty;
 
   // 用户重新编辑后清掉「已保存」提示,避免过期的成功提示和 dirty 表单并存。
   useEffect(() => {
@@ -1238,7 +1169,6 @@ export function ThemeManage() {
       !config?.theme ||
       savingDraftRef.current ||
       draftCostRateApiUrlInvalid ||
-      videoInputInvalid ||
       draftMultiPingInvalid
     ) {
       return;
@@ -1341,11 +1271,6 @@ export function ThemeManage() {
       ratingLabels: { ...prev.ratingLabels, [kind]: value },
     }));
   };
-  const draftBgAlignment = parseBackgroundAlignment(draft.backgroundAlignment);
-  const setBgSize = (size: BackgroundSize) =>
-    patch("backgroundAlignment", `${size},${draftBgAlignment.position}`);
-  const setBgPosition = (position: BackgroundPosition) =>
-    patch("backgroundAlignment", `${draftBgAlignment.size},${position}`);
   const acquiredAtMax = localDateInputMax();
 
   return (
@@ -1373,7 +1298,6 @@ export function ThemeManage() {
               !isDirty ||
               saving ||
               draftCostRateApiUrlInvalid ||
-              videoInputInvalid ||
               draftMultiPingInvalid
             }
             className="theme-manage-button is-compact is-primary"
@@ -1512,182 +1436,6 @@ export function ThemeManage() {
                         </button>
                       ))}
                     </div>
-                  </div>
-                </div>
-              </InstancePanel>
-
-              <InstancePanel
-                kicker="背景媒体"
-                title="自定义背景图与动态视频"
-                description="支持配置高质感壁纸或循环 MP4 视频背景（提供日夜双模适配）。"
-                aside={<Wallpaper size={16} />}
-              >
-                <div className="flex flex-col gap-4">
-                  <ToggleRow
-                    field="enableBackgroundImage"
-                    title="启用自定义背景媒体"
-                    desc="开启后将覆盖站点默认背景，优先应用下方配置的图片或视频。"
-                    checked={draft.enableBackgroundImage}
-                    onPatch={patch}
-                  />
-
-                  {draft.enableBackgroundImage && (
-                    <>
-                      <div className="surface-inset flex flex-col gap-3 px-4 py-4">
-                        <span className="setting-subhead-title">媒体形式</span>
-                        <div className="instance-segmented is-prominent is-even">
-                          {BACKGROUND_MEDIA_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => (
-                            <button
-                              key={value}
-                              type="button"
-                              data-active={draft.backgroundMediaType === value ? "true" : "false"}
-                              aria-pressed={draft.backgroundMediaType === value}
-                              onClick={() => patch("backgroundMediaType", value)}
-                              className="inline-flex items-center justify-center gap-2"
-                            >
-                              <Icon size={14} />
-                              <span>{label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {draft.backgroundMediaType === "image" ? (
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <label className="surface-inset flex flex-col gap-2 px-4 py-3">
-                            <span className="setting-subhead-title">
-                              桌面端背景图 URL
-                            </span>
-                            <input
-                              value={draft.backgroundImage}
-                              onChange={(event) => patch("backgroundImage", event.target.value)}
-                              placeholder="https://example.com/desktop.jpg"
-                              className="surface-inset w-full px-3 py-2 text-[13px] outline-none"
-                            />
-                            <span className="setting-hint">
-                              宽屏与桌面端加载的背景图。
-                            </span>
-                          </label>
-
-                          <label className="surface-inset flex flex-col gap-2 px-4 py-3">
-                            <span className="setting-subhead-title">
-                              移动端背景图 URL
-                            </span>
-                            <input
-                              value={draft.backgroundImageMobile}
-                              onChange={(event) => patch("backgroundImageMobile", event.target.value)}
-                              placeholder="https://example.com/mobile.jpg"
-                              className="surface-inset w-full px-3 py-2 text-[13px] outline-none"
-                            />
-                            <span className="setting-hint">
-                              竖屏手机加载，留空则沿用桌面端。
-                            </span>
-                          </label>
-
-                          <div className="surface-inset flex flex-col gap-2 px-4 py-3">
-                            <span className="setting-subhead-title">平铺尺寸</span>
-                            <div className="instance-segmented is-even">
-                              {BACKGROUND_SIZE_OPTIONS.map(({ value, label }) => (
-                                <button
-                                  key={value}
-                                  type="button"
-                                  data-active={draftBgAlignment.size === value ? "true" : "false"}
-                                  onClick={() => setBgSize(value)}
-                                >
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="surface-inset flex flex-col gap-2 px-4 py-3">
-                            <span className="setting-subhead-title">对齐位置</span>
-                            <div className="instance-segmented is-even">
-                              {BACKGROUND_POSITION_OPTIONS.map(({ value, label }) => (
-                                <button
-                                  key={value}
-                                  type="button"
-                                  data-active={draftBgAlignment.position === value ? "true" : "false"}
-                                  onClick={() => setBgPosition(value)}
-                                >
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <label className="surface-inset flex flex-col gap-2 px-4 py-3">
-                            <span className="setting-subhead-title">
-                              浅色模式视频 URL (MP4)
-                            </span>
-                            <input
-                              value={draft.backgroundVideo}
-                              onChange={(event) => patch("backgroundVideo", event.target.value)}
-                              placeholder={DEFAULT_BACKGROUND_VIDEO_URL}
-                              aria-invalid={backgroundVideoLightInvalid}
-                              className="surface-inset w-full px-3 py-2 text-[13px] outline-none"
-                            />
-                            <span className="setting-hint">
-                              {backgroundVideoLightInvalid
-                                ? (backgroundVideoLightMalformed
-                                    ? "请输入 HTTP(S) 或以 / 开头的站内视频直链"
-                                    : `视频模式需要浅色视频地址，可使用 ${DEFAULT_BACKGROUND_VIDEO_URL}`)
-                                : "留空使用 SAO 默认主题动态视频。"}
-                            </span>
-                          </label>
-                          <label className="surface-inset flex flex-col gap-2 px-4 py-3">
-                            <span className="setting-subhead-title">
-                              深色模式视频 URL (MP4)
-                            </span>
-                            <input
-                              value={draft.backgroundVideoDark}
-                              onChange={(event) => patch("backgroundVideoDark", event.target.value)}
-                              placeholder="可选，夜间专属视频"
-                              aria-invalid={backgroundVideoDarkInvalid}
-                              className="surface-inset w-full px-3 py-2 text-[13px] outline-none"
-                            />
-                            <span className="setting-hint">
-                              {backgroundVideoDarkInvalid
-                                ? "请输入 HTTP(S) 或以 / 开头的站内视频直链"
-                                : "留空则在深色下自动叠加暗色暗场滤镜。"}
-                            </span>
-                          </label>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  <div className="surface-inset flex flex-col gap-3 px-4 py-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <span className="setting-subhead-title">
-                        卡片不透明度
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={1}
-                          inputMode="numeric"
-                          value={draft.surfaceOpacity}
-                          onChange={(event) => {
-                            if (event.target.value.trim() === "") return;
-                            const next = Number(event.target.value);
-                            if (!Number.isFinite(next)) return;
-                            patch("surfaceOpacity", Math.min(100, Math.max(0, Math.round(next))));
-                          }}
-                          aria-label="卡片不透明度百分比"
-                          className="surface-inset w-20 px-3 py-2 text-right text-[13px] tabular outline-none"
-                        />
-                        <span className="text-[13px] font-medium text-(--text-tertiary)">%</span>
-                      </span>
-                    </div>
-                    <span className="setting-hint">
-                      输入 0–100 的整数。100 = 完全不透明，数值越低卡片越通透、越能透出背景媒体。
-                      低于 95 时会自动叠加一层可读性遮罩，保证文字清晰。
-                    </span>
                   </div>
                 </div>
               </InstancePanel>
