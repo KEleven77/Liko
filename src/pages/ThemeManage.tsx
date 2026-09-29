@@ -410,7 +410,7 @@ const THEME_TABS: ReadonlyArray<{
   hint: string;
   icon: typeof ListFilter;
 }> = [
-  { id: "home", label: "首页", hint: "外观、视图、总览、排序、隐藏节点", icon: ListFilter },
+  { id: "home", label: "首页", hint: "外观、视图、总览与排序", icon: ListFilter },
   { id: "card", label: "卡片", hint: "卡片上显示哪些信息与悬浮窗", icon: Rows3 },
   { id: "cost", label: "花费", hint: "资产统计与收购溢价", icon: CircleDollarSign },
   { id: "ping", label: "延迟", hint: "多线路与逐节点指定", icon: Activity },
