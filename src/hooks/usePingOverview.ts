@@ -273,7 +273,8 @@ function resolvePingAssignmentKey(
 
 // 限制 RPC 与兼容接口组成的整条回退链，避免一次刷新长期占住轮询。
 const PING_REQUEST_TIMEOUT_MS = 35_000;
-const PING_CACHE_STORAGE_KEY = "komari:lumina-plus:homepage-ping:v1";
+const PING_CACHE_STORAGE_KEY = "komari:sao:homepage-ping:v1";
+const LEGACY_PING_CACHE_STORAGE_KEY = "komari:lumina-plus:homepage-ping:v1";
 const PING_CACHE_TTL_MS = 5 * 60_000;
 
 interface PingOverviewCachePayload {
@@ -746,7 +747,9 @@ function readPingOverviewCache(
 ): Omit<PingOverviewCachePayload, "version" | "savedAt" | "assignmentKey"> | null {
   if (!assignmentKey || typeof window === "undefined") return null;
   try {
-    const raw = window.sessionStorage.getItem(PING_CACHE_STORAGE_KEY);
+    const raw =
+      window.sessionStorage.getItem(PING_CACHE_STORAGE_KEY) ||
+      window.sessionStorage.getItem(LEGACY_PING_CACHE_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
     if (!isRecord(parsed)) return null;

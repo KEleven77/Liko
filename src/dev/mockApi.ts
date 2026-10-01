@@ -519,9 +519,9 @@ export function installDevMockApi() {
     if (url.pathname === "/api/public") {
       const theme = url.searchParams.get("theme") ?? defaultTheme;
       return json({
-        sitename: "Lumina Ops",
+        sitename: "Komari SAO",
         description: "全球节点运行状态",
-        theme: "komari-theme-sao",
+        theme: "SAO",
         allow_cors: false,
         disable_password_login: false,
         oauth_enable: false,

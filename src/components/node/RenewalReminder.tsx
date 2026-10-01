@@ -14,14 +14,19 @@ import {
   type RenewalReminderSource,
 } from "@/utils/renewalReminder";
 
-const STORAGE_KEY = "lumina-renewal-reminders-v1";
+const STORAGE_KEY = "komari-sao:renewal-reminders:v1";
+const LEGACY_STORAGE_KEY = "lumina-renewal-reminders-v1";
 const MAX_VISIBLE_ROWS = 4;
 const CLOCK_REFRESH_MS = 60 * 60 * 1000;
 
 function readPreferences(): RenewalReminderPreferences {
   if (typeof window === "undefined") return EMPTY_RENEWAL_REMINDER_PREFERENCES;
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null") as Partial<RenewalReminderPreferences> | null;
+    const raw =
+      window.localStorage.getItem(STORAGE_KEY) ||
+      window.localStorage.getItem(LEGACY_STORAGE_KEY) ||
+      "null";
+    const parsed = JSON.parse(raw) as Partial<RenewalReminderPreferences> | null;
     return {
       dismissedCycles: Array.isArray(parsed?.dismissedCycles) ? parsed!.dismissedCycles : [],
       snoozedUntil:

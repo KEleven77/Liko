@@ -38,6 +38,7 @@ function walk(dir, base = dir) {
     a.name.localeCompare(b.name, "en"),
   );
   for (const entry of dirEntries) {
+    if (entry.name === ".DS_Store" || entry.name.startsWith("._")) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) out.push(...walk(full, base));
     else if (entry.isFile()) out.push({ path: relative(base, full), full });
