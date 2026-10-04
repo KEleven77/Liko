@@ -69,6 +69,7 @@ console.log("Type checking...");
 runTypecheck();
 
 console.log("Building...");
+await importScript("scripts/make-notices.mjs");
 await viteBuild({ root });
 
 console.log("Packaging...");

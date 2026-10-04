@@ -2,6 +2,16 @@
 
 基于 [WAOR/Komari-Theme-SAO](https://github.com/WAOR/Komari-Theme-SAO) 二次开发的 Lite 探针主题，维护者：Liko。
 
+## 项目声明
+
+本项目仅作为个人二次开发、学习和自用测试使用。本分支的二次开发完全使用 AI Vibe Coding，由维护者提出需求并进行选择、测试和发布；这不代表上游代码或第三方素材均由 AI 生成，也不代表本项目拥有其全部著作权。
+
+本项目并非 Lite、Komari、SAO 或相关品牌的官方项目，与其不存在官方合作或背书关系。原有代码、字体、图标及品牌标识的权利仍归各自权利人所有，`Liko` 作者字段表示本分支维护者，不代表对上游作品的原创署名。
+
+个人自用定位和 AI 开发声明不替代开源许可证或权利人授权，也不构成免责或无侵权保证。授权链仍有待核实项，完整记录见 [合规核查](docs/COMPLIANCE.md)。在补齐授权证据前，不应将本项目视为已完成合规审查或整体获得 MIT 授权的项目，也不建议进一步公开分发安装包或用于商业用途；这不是对第三方许可证额外施加使用限制。
+
+如权利人发现署名、许可或素材使用问题，请通过本仓库 Issue 提供涉及文件及权属信息，维护者会核实并进行补充署名、替换或移除等处理。该处理机制不代替事先取得必要授权。
+
 ## 安装
 
 1. 从 [Liko Releases](https://github.com/KEleven77/Liko/releases) 下载主题 ZIP。
@@ -33,7 +43,7 @@ npm run package
 
 ## 来源说明
 
-Liko 保留上游项目的历史和来源说明。下方为原项目文档，SAO 系列其他服务端版本的说明不代表 Liko 已完成兼容验证。上游 README 声明 MIT，但当前上游检出未包含独立 LICENSE 文件，本文不新增或替换原作者的许可证声明。
+Liko 保留上游项目的历史和来源说明。下方为原项目文档，SAO 系列其他服务端版本的说明不代表 Liko 已完成兼容验证。上游 README 声明 MIT，但对应完整授权和版权声明尚待核实；不据此替所有上游权利人授予 MIT 许可。已取得的第三方许可证见 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
 ---
 
@@ -42,7 +52,7 @@ Liko 保留上游项目的历史和来源说明。下方为原项目文档，SAO
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/license-review_pending-yellow" alt="License review pending">
   <img src="https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen" alt="Node Version">
   <img src="https://img.shields.io/badge/TypeScript-Strict-blue" alt="TypeScript">
 </p>
@@ -191,4 +201,4 @@ Liko 保留上游项目的历史和来源说明。下方为原项目文档，SAO
 
 ## 📄 开源许可证
 
-本项目基于 [MIT License](LICENSE) 开源发布。
+上游文档曾声明采用 MIT，但当前授权链仍有待核实项，不能据此认定 Liko 整体已获 MIT 授权。已确认组件遵循其各自许可证，详见 [第三方声明](THIRD_PARTY_NOTICES.md) 和 [合规核查](docs/COMPLIANCE.md)。

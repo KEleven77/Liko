@@ -24,6 +24,7 @@ Thumbs.db
 .vite/
 coverage/
 *.tsbuildinfo
+public/THIRD_PARTY_NOTICES.txt
 
 # Local reference checkouts
 komari-main/

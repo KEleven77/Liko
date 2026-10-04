@@ -62,6 +62,8 @@ for (const [path, hint] of [
 const entries = [
   { path: "komari-theme.json", full: resolve(root, "komari-theme.json") },
   { path: "preview.png", full: previewPath },
+  { path: "THIRD_PARTY_NOTICES.md", full: resolve(root, "THIRD_PARTY_NOTICES.md") },
+  { path: "COMPLIANCE.md", full: resolve(root, "docs/COMPLIANCE.md") },
   ...walk(distDir, root),
 ];
 
