@@ -33,6 +33,8 @@ import {
   isHomepageMultiPingConfigured,
 } from "@/utils/pingTasks";
 
+const EMPTY_PING_TASK_IDS: number[] = [];
+
 interface NodeCardModelOptions {
   pingBucketCount?: number;
   includeMultiPing?: boolean;
@@ -57,6 +59,7 @@ export function useNodeCardModel(
     showCardGroup,
     fakePingForUnbound,
     homepagePingBindings,
+    homepagePingTaskIdsByClient,
     enableHomepageMultiPing,
     homepageMultiPingTaskIds,
   } = useThemeSettings();
@@ -64,28 +67,37 @@ export function useNodeCardModel(
   const multiPingConfigured =
     enableHomepageMultiPing &&
     isHomepageMultiPingConfigured(homepageMultiPingTaskIds);
-  const multiPingActive = includeMultiPing && multiPingConfigured;
-  const singlePingOverview = useNodePingOverview(uuid, !multiPingConfigured);
-  const realPingLines = useNodePingOverviewLines(uuid, multiPingConfigured);
+  const hasNodePingOverride = Object.hasOwn(homepagePingTaskIdsByClient, uuid);
+  const nodePingTaskIds = hasNodePingOverride
+    ? homepagePingTaskIdsByClient[uuid] ?? EMPTY_PING_TASK_IDS
+    : homepageMultiPingTaskIds;
+  const nodeMultiPingConfigured = hasNodePingOverride
+    ? nodePingTaskIds.length > 0
+    : multiPingConfigured;
+  const multiPingActive = includeMultiPing && nodeMultiPingConfigured;
+  const singlePingOverview = useNodePingOverview(uuid, !nodeMultiPingConfigured);
+  const realPingLines = useNodePingOverviewLines(uuid, nodeMultiPingConfigured);
   const primaryMultiPingLine = useMemo(() => {
-    if (!multiPingConfigured || multiPingActive) return undefined;
-    const primaryTaskId = homepageMultiPingTaskIds[0];
+    if (!nodeMultiPingConfigured || multiPingActive) return undefined;
+    const primaryTaskId = nodePingTaskIds[0];
     return realPingLines.find((line) => line.taskId === primaryTaskId);
-  }, [homepageMultiPingTaskIds, multiPingActive, multiPingConfigured, realPingLines]);
+  }, [multiPingActive, nodeMultiPingConfigured, nodePingTaskIds, realPingLines]);
 
   const realPing = primaryMultiPingLine ?? singlePingOverview;
 
   const hasRealHomepagePingBinding = useMemo(
     () =>
-      multiPingConfigured || hasHomepagePingTaskBinding(uuid, homepagePingBindings),
-    [homepagePingBindings, multiPingConfigured, uuid],
+      hasNodePingOverride
+        ? nodePingTaskIds.length > 0
+        : multiPingConfigured || hasHomepagePingTaskBinding(uuid, homepagePingBindings),
+    [hasNodePingOverride, homepagePingBindings, multiPingConfigured, nodePingTaskIds.length, uuid],
   );
   const now = useHourlyClock();
   const ping = useFakePingFallback(
     uuid,
     realPing,
     metrics?.online === true,
-    fakePingForUnbound && !multiPingActive,
+    fakePingForUnbound && !multiPingActive && !hasNodePingOverride,
     homepagePingBindings,
   );
   // 状态跟随每条任务数据进入 Store,不再订阅全局 isRefreshing。这样后台轮询开始/结束
@@ -111,7 +123,7 @@ export function useNodeCardModel(
     ) {
       return [];
     }
-    return homepageMultiPingTaskIds.map((taskId) => {
+    return nodePingTaskIds.map((taskId) => {
       const loaded = realPingLines.find((line) => line.taskId === taskId);
       const line: HomepagePingLine =
         loaded ?? {
@@ -132,7 +144,7 @@ export function useNodeCardModel(
     });
   }, [
     bucketNow,
-    homepageMultiPingTaskIds,
+    nodePingTaskIds,
     multiPingActive,
     pingBucketCount,
     realPingLines,

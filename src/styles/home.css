@@ -102,12 +102,12 @@
 .mao-dashboard-hero {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 22px;
   background: var(--surface-elev, #eaecf0);
-  padding: clamp(14px, 2vw, 24px);
-  margin-bottom: 40px;
+  padding: 16px;
+  margin-bottom: 20px;
   box-shadow: none;
   position: relative;
   z-index: 10;
@@ -119,11 +119,11 @@
   box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.6);
 }
 
-@media (min-width: 1180px) {
+@media (min-width: 980px) {
   .mao-dashboard-hero {
     display: grid;
     grid-template-columns: minmax(0, 1.48fr) minmax(0, 1fr);
-    gap: 22px;
+    gap: 16px;
   }
 }
 
@@ -137,10 +137,10 @@
 }
 
 .mao-hero-header {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
 }
 
 .mao-badge {
@@ -165,9 +165,9 @@
 
 .mao-hero-greeting {
   margin: 0;
-  font-size: clamp(20px, 2vw, 25px);
+  font-size: 20px;
   font-weight: 800;
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
   line-height: 1.25;
   color: var(--text-primary);
 }
@@ -299,7 +299,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
   flex: 1;
   width: 100%;
 }
@@ -334,8 +334,8 @@
   border-radius: 14px;
   border: 1px solid rgba(0, 0, 0, 0.06);
   background: #ffffff;
-  padding: 13px 15px;
-  min-height: 96px;
+  padding: 9px 10px;
+  min-height: 78px;
   height: 100%;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
   transition: all 180ms ease;
@@ -449,8 +449,8 @@
   border-radius: 16px;
   border: 1px solid rgba(0, 0, 0, 0.06);
   background: #ffffff;
-  padding: clamp(14px, 1.8vw, 18px);
-  gap: 14px;
+  padding: 12px;
+  gap: 10px;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
 }
 
@@ -531,7 +531,7 @@
   border-radius: 12px;
   background: #f9fafb;
   border: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 11px 13px;
+  padding: 8px 10px;
 }
 
 :root[data-appearance="dark"] .mao-progress-section {
@@ -547,7 +547,7 @@
 }
 
 .mao-progress-big-num {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 850;
   letter-spacing: -0.03em;
   color: var(--text-primary);
@@ -712,7 +712,7 @@
 .mao-realtime-chart-canvas-wrap {
   position: relative;
   width: 100%;
-  height: 88px;
+  height: 56px;
   overflow: visible;
   touch-action: pan-y;
   cursor: crosshair;
@@ -2113,7 +2113,7 @@
 
 @media (max-width: 480px) {
   .mao-hero-header {
-    gap: 12px;
+    gap: 8px;
   }
 
   .mao-section-header {

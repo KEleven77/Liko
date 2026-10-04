@@ -58,8 +58,8 @@ import {
 import {
   assignHomepageMultiPingTask,
   HOMEPAGE_MULTI_PING_MAX_COUNT,
-  HOMEPAGE_MULTI_PING_MIN_COUNT,
-  isHomepageMultiPingConfigured,
+  HOMEPAGE_MULTI_PING_TASK_COUNT,
+  normalizeDefaultHomepagePingTaskIds,
   normalizeHomepageMultiPingTaskIds,
   normalizeHomepagePingTaskBindings,
   type HomepagePingTaskBindings,
@@ -263,6 +263,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     desktopNodeViewMode: settings.desktopNodeViewMode,
     mobileNodeViewMode: settings.mobileNodeViewMode,
     homepagePingBindings: settings.homepagePingBindings,
+    homepagePingTaskIdsByClient: settings.homepagePingTaskIdsByClient,
     enableHomepageMultiPing: settings.enableHomepageMultiPing,
     homepageMultiPingTaskIds: settings.homepageMultiPingTaskIds,
     fakePingForUnbound: settings.fakePingForUnbound,
@@ -738,6 +739,7 @@ export function ThemeManage() {
   const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
   const [taskSearch, setTaskSearch] = useState("");
   const [nodeSearch, setNodeSearch] = useState("");
+  const [serverPingSearch, setServerPingSearch] = useState("");
   const [premiumSearch, setPremiumSearch] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -831,6 +833,15 @@ export function ThemeManage() {
     },
     [],
   );
+  const patchNodePingTasks = useCallback((uuid: string, taskIds: number[] | null) => {
+    editVersionRef.current += 1;
+    setDraft((prev) => {
+      const next = { ...prev.homepagePingTaskIdsByClient };
+      if (taskIds == null) delete next[uuid];
+      else next[uuid] = normalizeHomepageMultiPingTaskIds(taskIds);
+      return { ...prev, homepagePingTaskIdsByClient: next };
+    });
+  }, []);
   const toggleTaskExpanded = useCallback((taskId: number) => {
     setExpandedTaskId((current) => (current === taskId ? null : taskId));
     setNodeSearch("");
@@ -911,16 +922,11 @@ export function ThemeManage() {
     });
   }, [sortedTasks, taskSearch]);
 
-  const multiPingSlotLimit = Math.min(
-    HOMEPAGE_MULTI_PING_MAX_COUNT,
-    Math.max(sortedTasks.length, HOMEPAGE_MULTI_PING_MIN_COUNT),
-  );
-
   const commitMultiPingTaskIds = useCallback(
     (updater: (current: number[]) => number[]) => {
       editVersionRef.current += 1;
       setDraft((prev) => {
-        const nextIds = normalizeHomepageMultiPingTaskIds(updater(prev.homepageMultiPingTaskIds));
+        const nextIds = normalizeDefaultHomepagePingTaskIds(updater(prev.homepageMultiPingTaskIds));
         return JSON.stringify(nextIds) === JSON.stringify(prev.homepageMultiPingTaskIds)
           ? prev
           : { ...prev, homepageMultiPingTaskIds: nextIds };
@@ -939,27 +945,6 @@ export function ThemeManage() {
     [commitMultiPingTaskIds],
   );
 
-  const removeMultiPingTask = useCallback(
-    (slot: number) => {
-      commitMultiPingTaskIds((current) => {
-        if (current.length <= HOMEPAGE_MULTI_PING_MIN_COUNT) return current;
-        const next = [...current];
-        next.splice(slot, 1);
-        return next;
-      });
-    },
-    [commitMultiPingTaskIds],
-  );
-
-  const addMultiPingTask = useCallback(() => {
-    commitMultiPingTaskIds((current) => {
-      if (current.length >= HOMEPAGE_MULTI_PING_MAX_COUNT) return current;
-      const availableTask = sortedTasks.find((task) => !current.includes(task.id));
-      if (!availableTask) return current;
-      return [...current, availableTask.id];
-    });
-  }, [commitMultiPingTaskIds, sortedTasks]);
-
   const visibleClients = useMemo(
     () => filterClients(sortedClients, nodeSearch),
     [nodeSearch, sortedClients],
@@ -967,6 +952,10 @@ export function ThemeManage() {
   const filteredPremiumClients = useMemo(
     () => filterClients(sortedClients, premiumSearch),
     [premiumSearch, sortedClients],
+  );
+  const filteredServerPingClients = useMemo(
+    () => filterClients(sortedClients, serverPingSearch),
+    [serverPingSearch, sortedClients],
   );
 
   // 溢价表格里"当前剩余价值"仅供参考,用已保存的汇率源/忽略名单算(不用草稿里还没保存的
@@ -1097,8 +1086,7 @@ export function ThemeManage() {
   const draftCostRateApiUrlInvalid =
     draft.costRateApiUrl.trim() !== "" && !isCostRateApiUrlValid(draft.costRateApiUrl.trim());
   const draftMultiPingInvalid =
-    draft.enableHomepageMultiPing &&
-    !isHomepageMultiPingConfigured(draft.homepageMultiPingTaskIds);
+    draft.homepageMultiPingTaskIds.length !== HOMEPAGE_MULTI_PING_TASK_COUNT;
 
   // 由当前草稿拼出的设置 payload,保存请求和 dirty 判断都用它。草稿字段与设置同名,这里只做
   // 「编辑态 → 存储态」的换形与归一化;文本域(hiddenNodesText/costIgnoredText)和 ratingLabels
@@ -1164,8 +1152,11 @@ export function ThemeManage() {
   );
 
   const handleSave = async () => {
+    if (!config?.theme) {
+      setError("无法读取当前主题标识，请刷新页面后重试");
+      return;
+    }
     if (
-      !config?.theme ||
       savingDraftRef.current ||
       draftCostRateApiUrlInvalid ||
       draftMultiPingInvalid
@@ -1279,7 +1270,7 @@ export function ThemeManage() {
           <ArrowLeft size={14} />
           <span>返回首页</span>
         </Link>
-        <h1 className="theme-topbar-title">SAO 主题设置</h1>
+        <h1 className="theme-topbar-title">Liko 主题设置</h1>
         <div className="theme-manage-toolbar-actions">
           <button
             type="button"
@@ -1293,6 +1284,7 @@ export function ThemeManage() {
           <button
             type="button"
             onClick={handleSave}
+            title={saving ? "正在保存主题设置" : draftCostRateApiUrlInvalid ? "汇率接口地址无效" : draftMultiPingInvalid ? "请配置三条默认探测任务" : !isDirty ? "没有待保存的修改" : "保存主题设置"}
             disabled={
               !isDirty ||
               saving ||
@@ -1302,7 +1294,7 @@ export function ThemeManage() {
             className="theme-manage-button is-compact is-primary"
           >
             {saving ? <Spinner size={14} /> : <Save size={14} />}
-            <span>{saving ? "保存中" : "保存设置"}</span>
+            <span>{saving ? "保存中" : !isDirty ? "已保存" : "保存设置"}</span>
           </button>
         </div>
       </header>
@@ -1821,43 +1813,115 @@ export function ThemeManage() {
               >
                 <div className="flex flex-col gap-4">
                   <div className="surface-inset flex flex-col gap-3 px-4 py-4">
-                    <span className="setting-subhead-title">首页探测展示模式</span>
-                    <div className="instance-segmented is-prominent is-even is-stack-mobile">
-                      <button
-                        type="button"
-                        data-active={!draft.enableHomepageMultiPing ? "true" : "false"}
-                        onClick={() => patch("enableHomepageMultiPing", false)}
-                      >
-                        单线路模式 (指定主线路)
-                      </button>
-                      <button
-                        type="button"
-                        data-active={draft.enableHomepageMultiPing ? "true" : "false"}
-                        onClick={() => patch("enableHomepageMultiPing", true)}
-                      >
-                        多线路模式 (并列展示三网/自定义线路)
-                      </button>
+                    <span className="setting-subhead-title">默认三条线路，逐服务器独立配置</span>
+                  </div>
+
+                  <div className="surface-inset flex flex-col gap-3 px-4 py-4">
+                    <div>
+                      <span className="setting-subhead-title">逐服务器自定义探测线路</span>
+                      <p className="setting-hint mt-1">
+                        未单独配置的服务器显示下方默认三条线路。单独配置后仅显示勾选的任务，可选择 1 到 8 条。任务本身仍须在 Lite 后台配置监测该服务器。
+                      </p>
                     </div>
+                    <label className="surface-inset flex items-center gap-2 px-3 py-2">
+                      <Search size={14} className="text-(--text-tertiary)" />
+                      <input
+                        value={serverPingSearch}
+                        onChange={(event) => setServerPingSearch(event.target.value)}
+                        placeholder="搜索服务器"
+                        aria-label="搜索服务器的延迟线路设置"
+                        className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-(--text-tertiary)"
+                      />
+                    </label>
+                    {filteredServerPingClients.map((client) => {
+                      const hasOverride = Object.hasOwn(
+                        draft.homepagePingTaskIdsByClient,
+                        client.uuid,
+                      );
+                      const inheritedTaskId = assignedTaskByClientUuid.get(client.uuid);
+                      const selectedIds = hasOverride
+                        ? draft.homepagePingTaskIdsByClient[client.uuid] ?? []
+                        : draft.enableHomepageMultiPing
+                          ? draft.homepageMultiPingTaskIds
+                          : inheritedTaskId
+                            ? [Number(inheritedTaskId)]
+                            : [];
+                      return (
+                        <details
+                          key={client.uuid}
+                          className="rounded-[8px] border border-(--hairline) px-3 py-2"
+                        >
+                          <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                            <span className="min-w-0 truncate text-[13px] font-medium">
+                              {client.name}
+                              <small className="ml-2 text-(--text-tertiary)">
+                                {hasOverride ? `${selectedIds.length} 条自定义` : `${selectedIds.length} 条默认`}
+                              </small>
+                            </span>
+                            {hasOverride && (
+                              <button
+                                type="button"
+                                className="theme-manage-button is-compact"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  patchNodePingTasks(client.uuid, null);
+                                }}
+                              >
+                                恢复默认
+                              </button>
+                            )}
+                          </summary>
+                          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                            {sortedTasks.map((task) => {
+                              const checked = selectedIds.includes(task.id);
+                              return (
+                                <label
+                                  key={task.id}
+                                  className="surface-inset flex min-w-0 cursor-pointer items-start gap-2 px-3 py-2"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    disabled={!checked && selectedIds.length >= HOMEPAGE_MULTI_PING_MAX_COUNT}
+                                    onChange={() => {
+                                      const next = checked
+                                        ? selectedIds.filter((id) => id !== task.id)
+                                        : [...selectedIds, task.id];
+                                      patchNodePingTasks(client.uuid, next);
+                                    }}
+                                    className="mt-0.5 accent-(--accent-500)"
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-[12px] font-medium">
+                                      {task.name || `线路 #${task.id}`}
+                                    </span>
+                                    <span className="block truncate text-[11px] text-(--text-tertiary)">
+                                      {task.type.toUpperCase()} · {task.target}
+                                    </span>
+                                  </span>
+                                </label>
+                              );
+                            })}
+                            {sortedTasks.length === 0 && (
+                              <p className="text-[12px] text-(--text-tertiary)">
+                                请先在 Lite 后台创建 Ping 任务。
+                              </p>
+                            )}
+                          </div>
+                        </details>
+                      );
+                    })}
                   </div>
 
                   {draft.enableHomepageMultiPing ? (
                     <div className="surface-inset flex flex-col gap-3 px-4 py-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <span className="setting-subhead-title">多线路槽位展示列表</span>
+                          <span className="setting-subhead-title">默认三条探测线路</span>
                           <p className="setting-hint mt-1">
-                            卡片将依序渲染这些线路的实时延迟柱条或色块。
+                            未单独配置的卡片将依序显示这些线路的延迟柱条或色块。
                           </p>
                         </div>
-                        {draft.homepageMultiPingTaskIds.length < multiPingSlotLimit && (
-                          <button
-                            type="button"
-                            onClick={addMultiPingTask}
-                            className="theme-manage-button is-compact"
-                          >
-                            + 添加展示线路
-                          </button>
-                        )}
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2">
@@ -1880,21 +1944,12 @@ export function ThemeManage() {
                                 </option>
                               ))}
                             </SettingSelect>
-                            {draft.homepageMultiPingTaskIds.length > HOMEPAGE_MULTI_PING_MIN_COUNT && (
-                              <button
-                                type="button"
-                                onClick={() => removeMultiPingTask(slot)}
-                                className="theme-manage-button is-compact is-danger shrink-0"
-                              >
-                                删除
-                              </button>
-                            )}
                           </div>
                         ))}
                       </div>
                       {draftMultiPingInvalid && (
                         <p className="mt-1 text-[11px] leading-relaxed text-(--status-error)" role="alert">
-                          请至少选择 {HOMEPAGE_MULTI_PING_MIN_COUNT} 条有效的展示线路。
+                          请选择 {HOMEPAGE_MULTI_PING_TASK_COUNT} 条默认展示线路。
                         </p>
                       )}
                     </div>

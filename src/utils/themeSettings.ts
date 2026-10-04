@@ -16,9 +16,12 @@ import {
   type HomeSortField,
 } from "@/utils/homeSort";
 import {
-  normalizeHomepageMultiPingTaskIds,
+  normalizeDefaultHomepagePingTaskIds,
+  DEFAULT_HOMEPAGE_MULTI_PING_TASK_IDS,
   normalizeHomepagePingTaskBindings,
+  normalizeHomepagePingTaskIdsByClient,
   type HomepagePingTaskBindings,
+  type HomepagePingTaskIdsByClient,
 } from "@/utils/pingTasks";
 
 export type Appearance = "system" | "light" | "dark";
@@ -31,6 +34,7 @@ export interface ResolvedThemeSettings {
   enableAdminButton: boolean;
   showPingChart: boolean;
   homepagePingBindings: HomepagePingTaskBindings;
+  homepagePingTaskIdsByClient: HomepagePingTaskIdsByClient;
   enableHomepageMultiPing: boolean;
   homepageMultiPingTaskIds: number[];
   fakePingForUnbound: boolean;
@@ -70,8 +74,9 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   enableAdminButton: true,
   showPingChart: true,
   homepagePingBindings: {},
-  enableHomepageMultiPing: false,
-  homepageMultiPingTaskIds: [],
+  homepagePingTaskIdsByClient: {},
+  enableHomepageMultiPing: true,
+  homepageMultiPingTaskIds: [...DEFAULT_HOMEPAGE_MULTI_PING_TASK_IDS],
   fakePingForUnbound: false,
   showHomeOverview: true,
   showGroupTabs: true,
@@ -161,7 +166,7 @@ function normalizeHomeSortDefault(
 export function normalizeThemeSettings(
   settings: (ThemeSettings & Record<string, unknown>) | null | undefined,
 ): ResolvedThemeSettings {
-  const homepageMultiPingTaskIds = normalizeHomepageMultiPingTaskIds(
+  const homepageMultiPingTaskIds = normalizeDefaultHomepagePingTaskIds(
     settings?.homepageMultiPingTaskIds,
   );
   return {
@@ -177,8 +182,10 @@ export function normalizeThemeSettings(
     enableAdminButton: enabledUnlessFalse(settings?.enableAdminButton),
     showPingChart: enabledUnlessFalse(settings?.showPingChart),
     homepagePingBindings: normalizeHomepagePingTaskBindings(settings?.homepagePingBindings),
-    // 保留开关原值，让管理页能呈现并修复不完整配置；首页消费方仅在任务恰好为三项时启用。
-    enableHomepageMultiPing: settings?.enableHomepageMultiPing === true,
+    homepagePingTaskIdsByClient: normalizeHomepagePingTaskIdsByClient(
+      settings?.homepagePingTaskIdsByClient,
+    ),
+    enableHomepageMultiPing: true,
     homepageMultiPingTaskIds,
     // 默认关闭(需手动开启):给访客展示的是模拟数据,必须由站长显式决定。
     fakePingForUnbound: settings?.fakePingForUnbound === true,

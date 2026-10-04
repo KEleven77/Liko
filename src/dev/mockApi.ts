@@ -1,4 +1,5 @@
 import type { NodeInfo } from "@/types/komari";
+import { getDevPreviewParams } from "./previewMode";
 
 const GIB = 1024 ** 3;
 const TIB = 1024 ** 4;
@@ -442,6 +443,7 @@ const pingTasks = [
   { id: 1, name: "中国电信", target: "电信探针" },
   { id: 2, name: "中国联通", target: "联通探针" },
   { id: 3, name: "中国移动", target: "移动探针" },
+  { id: 4, name: "Cloudflare DNS", target: "1.1.1.1" },
 ].map((task, index) => ({
   ...task,
   interval: 60,
@@ -462,10 +464,19 @@ function json(data: unknown, init?: ResponseInit) {
 export function installDevMockApi() {
   const nativeFetch = window.fetch.bind(window);
   // ?mock=1&admin=1 模拟已登录管理员,连带放开 /api/admin/*,ThemeManage 才可在 dev 调试。
-  const adminMode = new URLSearchParams(window.location.search).get("admin") === "1";
-  // 保存后的主题设置驻留内存,让「保存 → /api/public refetch」链路在 dev 里闭环。
-  const defaultTheme = "komari-theme-sao";
-  const savedThemeSettings: Record<string, Record<string, unknown>> = {};
+  const previewParams = getDevPreviewParams();
+  const adminMode = previewParams.get("admin") === "1";
+  const defaultTheme = "komari-theme-liko";
+  const storageKey = "sao-dev-theme-settings";
+  let savedThemeSettings: Record<string, Record<string, unknown>> = {};
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "{}");
+    if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+      savedThemeSettings = stored as Record<string, Record<string, unknown>>;
+    }
+  } catch {
+    // 无法读取预览缓存时使用默认设置。
+  }
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
@@ -513,15 +524,20 @@ export function installDevMockApi() {
       if (!adminMode) return json({ message: "unauthorized" }, { status: 401 });
       const theme = url.searchParams.get("theme") ?? defaultTheme;
       savedThemeSettings[theme] = (await request.json()) as Record<string, unknown>;
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(savedThemeSettings));
+      } catch {
+        return json({ message: "预览设置无法写入浏览器存储" }, { status: 500 });
+      }
       return json({ status: "success" });
     }
 
     if (url.pathname === "/api/public") {
       const theme = url.searchParams.get("theme") ?? defaultTheme;
       return json({
-        sitename: "Komari SAO",
+        sitename: "Komari Liko",
         description: "全球节点运行状态",
-        theme: "SAO",
+        theme,
         allow_cors: false,
         disable_password_login: false,
         oauth_enable: false,
@@ -551,8 +567,15 @@ export function installDevMockApi() {
           // 单任务刻意和三网首项不同，便于回归验证列表没有误读全局三网数据。
           homepagePingBindings: { "2": nodes.map((node) => node.uuid) },
           enableHomepageMultiPing:
-            new URLSearchParams(window.location.search).get("multiPing") === "1",
+            previewParams.get("multiPing") === "1",
           homepageMultiPingTaskIds: [1, 2, 3],
+          homepagePingTaskIdsByClient:
+            previewParams.get("customPing") === "1"
+              ? {
+                  "tokyo-edge-01": [1],
+                  "singapore-api-01": [1, 2, 3, 4],
+                }
+              : {},
         },
       });
     }

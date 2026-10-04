@@ -100,7 +100,7 @@ describe("homepage ping task bindings", () => {
     );
   });
 
-  it("requests either global multi-ping tasks or per-node single bindings, never both", () => {
+  it("requests the selected tasks for both global and single binding modes", () => {
     const multiSelections = resolveHomepagePingSelections(
       ["node-a", "node-b"],
       { "8": ["node-a"], "9": ["node-b"] },
@@ -114,7 +114,7 @@ describe("homepage ping task bindings", () => {
         ["node-b", [3, 1, 2]],
       ]),
     );
-    expect(multiSelections.requestedTaskIdsByClient).toBe(
+    expect(multiSelections.requestedTaskIdsByClient).toEqual(
       multiSelections.multiTaskIdsByClient,
     );
 
@@ -129,8 +129,29 @@ describe("homepage ping task bindings", () => {
       ]),
     );
     expect(singleSelections.multiTaskIdsByClient).toEqual(new Map());
-    expect(singleSelections.requestedTaskIdsByClient).toBe(
+    expect(singleSelections.requestedTaskIdsByClient).toEqual(
       singleSelections.singleTaskIdsByClient,
     );
+  });
+  it("inherits three defaults unless a server has its own selection", () => {
+    const selections = resolveHomepagePingSelections(
+      ["default", "single", "four", "hidden"], {}, [1, 2, 3],
+      { single: [4], four: [1, 2, 3, 4], hidden: [] },
+    );
+    expect(selections.requestedTaskIdsByClient).toEqual(new Map([
+      ["default", [1, 2, 3]], ["single", [4]],
+      ["four", [1, 2, 3, 4]], ["hidden", []],
+    ]));
+  });
+
+  it("includes both legacy bindings and server overrides in requests", () => {
+    const selections = resolveHomepagePingSelections(
+      ["legacy", "custom"], { "8": ["legacy"] }, [], { custom: [1, 4] },
+    );
+    expect(selections.singleTaskIdsByClient).toEqual(new Map([["legacy", [8]]]));
+    expect(selections.multiTaskIdsByClient).toEqual(new Map([["custom", [1, 4]]]));
+    expect(selections.requestedTaskIdsByClient).toEqual(new Map([
+      ["legacy", [8]], ["custom", [1, 4]],
+    ]));
   });
 });

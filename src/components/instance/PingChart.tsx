@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import UplotReact from "uplot-react";
 import type uPlot from "uplot";
-import { Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, RefreshCw, Info } from "lucide-react";
 import { usePingRecords } from "@/hooks/useRecords";
 import { InstancePanel, InstanceChartLoading } from "./InstancePanel";
 import {
@@ -104,10 +104,14 @@ export function PingChart({
   uuid,
   hours,
   active = true,
+  networkDialog = false,
+  rangeControls,
 }: {
   uuid: string;
   hours: number;
   active?: boolean;
+  networkDialog?: boolean;
+  rangeControls?: ReactNode;
 }) {
   const {
     data,
@@ -380,8 +384,8 @@ export function PingChart({
   }, [chart, connectNulls, hiddenTasks, hours, isDark, requestedXRange, taskColors, taskIndexById, taskLabels, tasks, visibleTasks, yRange]);
 
   const options = useMemo<uPlot.Options | null>(
-    () => (baseOptions ? { ...baseOptions, width: w, height: h } : null),
-    [baseOptions, w, h],
+    () => (baseOptions ? { ...baseOptions, width: w, height: networkDialog ? 240 : h } : null),
+    [baseOptions, w, h, networkDialog],
   );
 
   const taskStats = useMemo(() => {
@@ -489,7 +493,14 @@ export function PingChart({
   }
 
   return (
-    <InstancePanel title="Ping 图表" description={coverageLabel ?? undefined}>
+    <InstancePanel title="Ping 图表" description={coverageLabel ?? undefined} className={networkDialog ? "network-ping-panel" : undefined}>
+      {networkDialog && <div className="network-ping-controls">
+        {rangeControls}
+        <div className="network-ping-selection">
+          <button type="button" className="instance-toggle-button" onClick={() => setHiddenTasks(new Set())}>全选</button>
+          <button type="button" className="instance-toggle-button" onClick={() => setHiddenTasks(new Set(tasks.map((task) => task.id)))}>全不选</button>
+        </div>
+      </div>}
       <div className="instance-ping-toolbar">
         <SwitchToggle
           label="削峰平滑"
@@ -503,10 +514,10 @@ export function PingChart({
           onToggle={() => setConnectNulls((value) => !value)}
           title="关闭：如实显示中断/丢包断点；开启：跨过所有空缺连成完整曲线（更好看，但看不出掉线）。注：偶尔漏一两次采样的小空缺始终自动桥接，不受此开关影响。"
         />
-        <button type="button" className="instance-toggle-button" onClick={toggleAll}>
+        {!networkDialog && <button type="button" className="instance-toggle-button" onClick={toggleAll}>
           {hiddenTasks.size === 0 ? <EyeOff size={14} aria-hidden /> : <Eye size={14} aria-hidden />}
           {hiddenTasks.size === 0 ? "隐藏全部" : "显示全部"}
-        </button>
+        </button>}
         <button
           type="button"
           className="instance-toggle-button"
@@ -538,6 +549,20 @@ export function PingChart({
                 `min ${task.min != null ? `${task.min.toFixed(0)} ms` : "—"} | max ${task.max != null ? `${task.max.toFixed(0)} ms` : "—"} | 样本 ${task.total ?? 0} | 间隔 ${task.interval}s`,
               ].join("\n")}
             >
+              {networkDialog ? <>
+                <span className="network-ping-task-heading">
+                  <span className="network-ping-task-swatch" style={{ background: task.color }} aria-hidden />
+                  <span className="instance-ping-task-name">{taskLabels.get(task.id) ?? `任务 #${task.id}`}</span>
+                  <Info size={14} aria-hidden className="network-ping-task-info" />
+                </span>
+                <span className="network-ping-task-stats tabular">
+                  <span>{task.latest != null ? `${Math.round(task.latest)}ms` : "—"}</span>
+                  <span aria-hidden>·</span>
+                  <span>{task.loss.toFixed(2)}%</span>
+                  <span aria-hidden>·</span>
+                  <span>{task.volatility != null ? task.volatility.toFixed(2) : "—"}</span>
+                </span>
+              </> : <>
               <span className="instance-ping-task-dot" style={{ background: task.color }} aria-hidden />
               <span className="instance-ping-task-name">{taskLabels.get(task.id) ?? `任务 #${task.id}`}</span>
               <span
@@ -557,6 +582,7 @@ export function PingChart({
               >
                 {task.loss.toFixed(1)}%
               </span>
+              </>}
             </button>
           );
         })}
@@ -576,6 +602,18 @@ export function PingChart({
           <div className="instance-empty">当前已隐藏全部线路，点击上方按钮可恢复显示</div>
         )}
       </div>
+      {networkDialog && <div className="network-ping-legend" role="group" aria-label="网络曲线图例">
+        {taskStats.map((task) => {
+          const visible = !hiddenTasks.has(task.id);
+          const label = taskLabels.get(task.id) ?? `任务 #${task.id}`;
+          return <button type="button" key={task.id} aria-pressed={visible}
+            title={`${visible ? "隐藏" : "显示"} ${label}`}
+            onClick={() => toggleTask(task.id)}>
+            <span className="network-ping-legend-swatch" style={{ backgroundColor: task.color }} aria-hidden />
+            <span>{label}</span>
+          </button>;
+        })}
+      </div>}
     </InstancePanel>
   );
 }

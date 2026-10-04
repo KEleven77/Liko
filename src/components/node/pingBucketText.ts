@@ -45,3 +45,9 @@ export function formatHealthBucketTooltip(
       : formatLossBucketSummary(bucket, " · ");
   return window ? `${window} · ${summary}` : summary;
 }
+
+export function formatCombinedPingBucketTooltip(bucket: PingOverviewBucket) {
+  const window = formatPingBucketWindow(bucket);
+  const summary = `延迟 ${formatLatencyBucketSummary(bucket)} · 丢包 ${formatLossBucketSummary(bucket, " · ")}`;
+  return window ? `${window} · ${summary}` : summary;
+}

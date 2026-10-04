@@ -157,6 +157,8 @@ export const NodeCard = memo(function NodeCard({
 
           {homepagePingLines.length >= HOMEPAGE_MULTI_PING_MIN_COUNT ? (
             <MultiPingStatus
+              uuid={node.uuid}
+              name={node.name}
               lines={homepagePingLines}
               density="large"
               className="card-metric-section"

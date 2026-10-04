@@ -464,19 +464,7 @@
   gap: 22px;
 }
 
-/* 三网模式沿用单线路“延迟 / 丢包”双图语义：左右按指标分组、每列三行线路，
-   分桶颜色表达真实延迟与丢包状态。 */
 .multi-ping-status {
-  min-width: 0;
-}
-
-.multi-ping-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.multi-ping-metric-column {
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -484,21 +472,344 @@
 }
 
 .multi-ping-metric-row {
+  cursor: pointer;
   display: flex;
-  min-width: 0;
   flex-direction: column;
+  min-width: 0;
   gap: 3px;
 }
 
+.multi-ping-metric-row:focus-visible {
+  outline: 2px solid var(--text-secondary);
+  outline-offset: 3px;
+}
+
+.node-network-dialog {
+  margin: auto;
+  width: min(1120px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+  max-height: calc(100dvh - 32px);
+  box-sizing: border-box;
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface, #202024);
+  color: var(--text-primary);
+  box-shadow: 0 20px 70px rgb(0 0 0 / 35%);
+}
+
+.node-network-dialog::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+.node-network-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--hairline);
+  align-items: flex-start;
+}
+
+.node-network-dialog-header h2 {
+  margin: 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.node-network-dialog-header p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.node-network-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.node-network-ranges {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 6px;
+  background: var(--surface-elev);
+  flex-wrap: wrap;
+}
+
+.node-network-ranges button {
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.node-network-ranges button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.node-network-range-controls,
+.network-ping-controls,
+.network-ping-selection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.network-ping-controls {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.network-ping-selection .instance-toggle-button {
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--surface-elev);
+}
+
+.node-network-custom-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.node-network-custom-range input {
+  width: 64px;
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--surface-elev);
+  color: var(--text-primary);
+}
+
+.node-network-dialog .network-ping-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.network-ping-panel > .instance-panel-header {
+  display: none;
+}
+
+.network-ping-panel .instance-ping-tasks {
+  order: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.network-ping-panel .instance-ping-task {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 68px;
+  padding: 10px;
+  border: 1px solid transparent !important;
+  border-radius: 6px;
+  background: var(--surface-elev);
+  text-align: left;
+}
+
+.network-ping-panel .instance-ping-task[data-visible="false"] {
+  opacity: 0.45;
+}
+
+.network-ping-panel .instance-ping-task:hover,
+.network-ping-panel .instance-ping-task:focus-visible {
+  border-color: var(--text-tertiary) !important;
+}
+
+.network-ping-task-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.network-ping-task-swatch {
+  width: 4px;
+  height: 18px;
+  flex: 0 0 4px;
+  border-radius: 2px;
+}
+
+.network-ping-panel .instance-ping-task-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.network-ping-task-info {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.network-ping-task-stats {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.network-ping-panel .instance-ping-toolbar {
+  order: 2;
+  justify-content: flex-start;
+  margin: 0;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.network-ping-panel .instance-uplot-wrap.is-large {
+  order: 3;
+  margin: 0;
+  padding: 8px 0 2px;
+  background: var(--surface-elev);
+  border-radius: 6px;
+}
+
+.network-ping-legend {
+  order: 4;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+}
+
+.network-ping-legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.network-ping-legend button[aria-pressed="false"] {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.network-ping-legend button:hover {
+  background: var(--surface-elev);
+}
+
+.network-ping-legend-swatch {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-radius: 2px;
+}
+
+@media (max-width: 600px) {
+  .node-network-ranges {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+    gap: 2px;
+  }
+
+  .node-network-ranges button {
+    padding: 6px 5px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .node-network-range-controls {
+    width: 100%;
+  }
+
+  .node-network-dialog {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 12px;
+  }
+
+  .node-network-dialog-header h2 {
+    font-size: 16px;
+  }
+
+  .network-ping-panel .instance-ping-tasks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .network-ping-panel .instance-ping-task {
+    padding: 10px;
+  }
+
+  .network-ping-task-stats {
+    font-size: 10px;
+    gap: 3px;
+  }
+}
+
 .multi-ping-metric-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6px minmax(0, 1fr);
+  min-width: 0;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.multi-ping-latency-head {
   display: flex;
   min-width: 0;
   align-items: baseline;
   justify-content: space-between;
-  gap: 6px;
+  gap: 4px;
 }
 
-.multi-ping-metric-head.is-value-only {
+.multi-ping-loss-head {
+  grid-column: 3;
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
   justify-content: flex-end;
 }
 
@@ -517,7 +828,7 @@
   flex: 0 0 auto;
   font-size: 11.5px;
   font-weight: 720;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
@@ -528,11 +839,46 @@
   font-weight: 540;
 }
 
+.multi-ping-loss {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  font-weight: 720;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.multi-ping-loss small {
+  font-size: 8.5px;
+  font-weight: 540;
+  color: var(--text-tertiary);
+}
+
 .multi-ping-buckets {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 4px;
+  min-width: 0;
+  height: 7px;
+}
+
+.multi-ping-history-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 0;
+}
+
+.multi-ping-history-line {
   position: relative;
   display: block;
   min-width: 0;
-  height: 11px;
+  min-height: 0;
 }
 
 .multi-ping-buckets .health-bar-row {
@@ -540,19 +886,14 @@
 }
 
 .multi-ping-status.is-compact {
-  display: block;
-}
-
-.multi-ping-status.is-compact .multi-ping-columns {
-  gap: 14px;
-}
-
-.multi-ping-status.is-compact .multi-ping-metric-column {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 6px;
 }
 
 .multi-ping-status.is-compact .multi-ping-buckets {
-  height: 9px;
+  height: 6px;
 }
 
 .server-health-block {

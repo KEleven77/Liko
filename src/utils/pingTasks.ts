@@ -1,4 +1,5 @@
 export type HomepagePingTaskBindings = Record<string, string[]>;
+export type HomepagePingTaskIdsByClient = Record<string, number[]>;
 
 /** 多线路模式最多同时展示几条线路，默认上限为 8 条 */
 export const HOMEPAGE_MULTI_PING_MAX_COUNT = 8;
@@ -16,6 +17,14 @@ export function isHomepageMultiPingConfigured(taskIds: readonly number[]): boole
 
 /** 默认三条线路（1, 2, 3） */
 export const DEFAULT_HOMEPAGE_MULTI_PING_TASK_IDS: readonly number[] = [1, 2, 3];
+
+export function normalizeDefaultHomepagePingTaskIds(value: unknown): number[] {
+  const selected = normalizeHomepageMultiPingTaskIds(value);
+  for (const taskId of DEFAULT_HOMEPAGE_MULTI_PING_TASK_IDS) {
+    if (!selected.includes(taskId)) selected.push(taskId);
+  }
+  return selected.slice(0, HOMEPAGE_MULTI_PING_TASK_COUNT);
+}
 
 const invertedBindingsCache = new WeakMap<HomepagePingTaskBindings, Map<string, number>>();
 
@@ -92,6 +101,19 @@ export function normalizeHomepagePingTaskBindings(
   return normalized;
 }
 
+export function normalizeHomepagePingTaskIdsByClient(
+  value: unknown,
+): HomepagePingTaskIdsByClient {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const normalized: HomepagePingTaskIdsByClient = {};
+  for (const [client, taskIds] of Object.entries(value)) {
+    const uuid = client.trim();
+    if (!uuid || !Array.isArray(taskIds)) continue;
+    normalized[uuid] = normalizeHomepageMultiPingTaskIds(taskIds);
+  }
+  return normalized;
+}
+
 export function invertHomepagePingTaskBindings(
   bindings: HomepagePingTaskBindings,
 ): Map<string, number> {
@@ -128,19 +150,30 @@ export function resolveHomepagePingTaskIdsByClient(
   clientUuids: string[],
   bindings: HomepagePingTaskBindings,
   multiTaskIds: number[] = [],
+  taskIdsByClient: HomepagePingTaskIdsByClient = {},
 ): Map<string, number[]> {
   const selectedTaskIds = normalizeHomepageMultiPingTaskIds(multiTaskIds);
   const selectedTaskIdsByClient = new Map<string, number[]>();
 
   if (isHomepageMultiPingConfigured(selectedTaskIds)) {
     for (const uuid of clientUuids) {
-      if (uuid) selectedTaskIdsByClient.set(uuid, selectedTaskIds);
+      if (!uuid) continue;
+      selectedTaskIdsByClient.set(
+        uuid,
+        Object.hasOwn(taskIdsByClient, uuid)
+          ? normalizeHomepageMultiPingTaskIds(taskIdsByClient[uuid])
+          : selectedTaskIds,
+      );
     }
     return selectedTaskIdsByClient;
   }
 
   const singleTaskByClient = invertHomepagePingTaskBindings(bindings);
   for (const uuid of clientUuids) {
+    if (Object.hasOwn(taskIdsByClient, uuid)) {
+      selectedTaskIdsByClient.set(uuid, normalizeHomepageMultiPingTaskIds(taskIdsByClient[uuid]));
+      continue;
+    }
     const taskId = singleTaskByClient.get(uuid);
     if (taskId != null) selectedTaskIdsByClient.set(uuid, [taskId]);
   }
@@ -151,26 +184,31 @@ export function resolveHomepagePingSelections(
   clientUuids: string[],
   bindings: HomepagePingTaskBindings,
   multiTaskIds: number[] = [],
+  taskIdsByClient: HomepagePingTaskIdsByClient = {},
 ) {
   const normalizedMultiTaskIds =
     normalizeHomepageMultiPingTaskIds(multiTaskIds);
   const useMultiPing = isHomepageMultiPingConfigured(normalizedMultiTaskIds);
-  const singleTaskIdsByClient = useMultiPing
-    ? new Map<string, number[]>()
-    : resolveHomepagePingTaskIdsByClient(clientUuids, bindings);
-  const multiTaskIdsByClient = useMultiPing
-    ? resolveHomepagePingTaskIdsByClient(
-        clientUuids,
-        {},
-        normalizedMultiTaskIds,
-      )
-    : new Map<string, number[]>();
+  const singleTaskIdsByClient = new Map<string, number[]>();
+  const multiTaskIdsByClient = new Map<string, number[]>();
+  const selectedByClient = resolveHomepagePingTaskIdsByClient(
+    clientUuids,
+    bindings,
+    normalizedMultiTaskIds,
+    taskIdsByClient,
+  );
+  for (const [uuid, taskIds] of selectedByClient) {
+    const isCustom = Object.hasOwn(taskIdsByClient, uuid);
+    if (useMultiPing || isCustom) multiTaskIdsByClient.set(uuid, taskIds);
+    else if (taskIds.length > 0) singleTaskIdsByClient.set(uuid, taskIds);
+  }
 
   return {
     singleTaskIdsByClient,
     multiTaskIdsByClient,
-    requestedTaskIdsByClient: useMultiPing
-      ? multiTaskIdsByClient
-      : singleTaskIdsByClient,
+    requestedTaskIdsByClient: new Map([
+      ...singleTaskIdsByClient,
+      ...multiTaskIdsByClient,
+    ]),
   };
 }

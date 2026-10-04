@@ -7,151 +7,113 @@ import { latencyHeatColor, lossHeatColor } from "@/utils/metricTone";
 import { HealthBucketTooltip } from "./HealthBucketTooltip";
 import { LatencyBars } from "./LatencyBars";
 import { QualityBars } from "./QualityBars";
-import { formatHealthBucketTooltip } from "./pingBucketText";
+import { formatCombinedPingBucketTooltip } from "./pingBucketText";
+import { NodeNetworkDialog } from "./NodeNetworkDialog";
 
 type MultiPingStatusDensity = "large" | "compact";
-type MultiPingMetric = "latency" | "loss";
 
-const MultiPingMetricRow = memo(function MultiPingMetricRow({
+const PingLineRow = memo(function PingLineRow({
   line,
-  metric,
   density,
   redrawKey,
+  onOpen,
 }: {
   line: HomepagePingDisplayLine;
-  metric: MultiPingMetric;
   density: MultiPingStatusDensity;
   redrawKey: string;
+  onOpen: () => void;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const latencyColor = latencyHeatColor(line.lastValue);
-  const lossColor = lossHeatColor(line.loss);
+  const [hoveredMetric, setHoveredMetric] = useState<"latency" | "loss" | null>(null);
   const isLoading = line.loadState === "pending";
   const isError = line.loadState === "error";
+  const emptyLabel = isLoading ? "加载中" : isError ? "加载失败" : "无样本";
+  const hoveredBucket = hoveredIndex == null ? null : line.buckets[hoveredIndex];
+  const tooltip = hoveredBucket ? formatCombinedPingBucketTooltip(hoveredBucket) : null;
+  const latencyLabel = line.lastValue == null ? emptyLabel : `${Math.round(line.lastValue)} ms`;
+  const lossLabel = line.loss == null ? emptyLabel : `${line.loss.toFixed(1)}%`;
   const staleError = isError && (line.lastValue != null || line.loss != null);
-  const latencyLabel =
-    isLoading && line.lastValue == null
-      ? "加载中"
-      : isError && line.lastValue == null
-        ? "加载失败"
-        : line.lastValue == null
-          ? "无样本"
-          : `${Math.round(line.lastValue)}ms`;
-  const lossLabel =
-    isLoading && line.loss == null
-      ? "加载中"
-      : isError && line.loss == null
-        ? "加载失败"
-        : line.loss == null
-          ? "—"
-          : `${line.loss.toFixed(1)}%`;
-  const hoveredBucket =
-    hoveredIndex == null ? null : (line.buckets[hoveredIndex] ?? null);
-  const tooltip = hoveredBucket
-    ? formatHealthBucketTooltip(hoveredBucket, metric)
-    : null;
-  const chartHeight = density === "compact" ? 9 : 11;
-  const value = metric === "latency" ? line.lastValue : line.loss;
-  const valueColor = metric === "latency" ? latencyColor : lossColor;
-  const unit = metric === "latency" ? "ms" : "%";
-  const waiting = isLoading && value == null;
-  const displayValue =
-    waiting
-      ? "..."
-      : isError && value == null
-        ? "!"
-        : value == null
-          ? "—"
-          : metric === "latency"
-            ? Math.round(value)
-            : value.toFixed(1);
+
   return (
     <div
       className="multi-ping-metric-row"
+      role="button"
+      tabIndex={0}
+      aria-label={`查看 ${line.taskName} 所属服务器的网络详情`}
+      aria-haspopup="dialog"
+      onClick={(event) => { event.stopPropagation(); onOpen(); }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          onOpen();
+        }
+      }}
       data-load-state={line.loadState ?? "ready"}
-      title={`${line.taskName} · 延迟 ${latencyLabel} · 丢包 ${lossLabel}${
-        staleError ? " · 刷新失败，显示上次数据" : ""
-      }`}
+      title={`${line.taskName} · 延迟 ${latencyLabel} · 丢包 ${lossLabel}${staleError ? " · 刷新失败，显示上次数据" : ""}`}
     >
-      <div
-        className={clsx(
-          "multi-ping-metric-head",
-          metric === "loss" && "is-value-only",
-        )}
-      >
-        {metric === "latency" && (
-          <span className="multi-ping-name">{line.taskName}</span>
-        )}
-        <strong
-          className="multi-ping-value tabular"
-          style={{
-            color: value == null ? "var(--text-tertiary)" : valueColor,
-          }}
-        >
-          {displayValue}
-          {value != null && <small>{unit}</small>}
-        </strong>
+      <div className="multi-ping-metric-head">
+        <span className="multi-ping-latency-head">
+          <span className="multi-ping-name" title={line.taskName}>{line.taskName}</span>
+          <strong
+            className="multi-ping-value tabular"
+            aria-label={`延迟 ${latencyLabel}`}
+            style={{ color: line.lastValue == null ? "var(--text-tertiary)" : latencyHeatColor(line.lastValue) }}
+          >
+            {line.lastValue == null ? emptyLabel : Math.round(line.lastValue)}
+            {line.lastValue != null && <small>ms</small>}
+          </strong>
+        </span>
+        <span className="multi-ping-loss-head">
+          <span
+            className="multi-ping-loss tabular"
+            aria-label={`丢包 ${lossLabel}`}
+            style={{ color: line.loss == null ? "var(--text-tertiary)" : lossHeatColor(line.loss) }}
+          >
+            <small>丢包</small> {lossLabel}
+          </span>
+        </span>
       </div>
       <span className="multi-ping-buckets">
-        {metric === "latency" ? (
+        <span className="multi-ping-history-line" title="延迟历史">
           <LatencyBars
             buckets={line.buckets}
             redrawKey={redrawKey}
-            height={chartHeight}
-            onHoverIndex={setHoveredIndex}
+            height={density === "compact" ? 6 : 7}
+            onHoverIndex={(index) => {
+              setHoveredMetric(index == null ? null : "latency");
+              setHoveredIndex(index);
+            }}
           />
-        ) : (
+          <HealthBucketTooltip text={hoveredMetric === "latency" ? tooltip : null} index={hoveredIndex} count={line.buckets.length} />
+        </span>
+        <span className="multi-ping-history-separator" aria-hidden="true">|</span>
+        <span className="multi-ping-history-line" title="丢包率历史">
           <QualityBars
             buckets={line.buckets}
             redrawKey={redrawKey}
-            height={chartHeight}
-            onHoverIndex={setHoveredIndex}
+            height={density === "compact" ? 6 : 7}
+            onHoverIndex={(index) => {
+              setHoveredMetric(index == null ? null : "loss");
+              setHoveredIndex(index);
+            }}
           />
-        )}
-        <HealthBucketTooltip
-          text={tooltip}
-          index={hoveredIndex}
-          count={line.buckets.length}
-        />
+          <HealthBucketTooltip text={hoveredMetric === "loss" ? tooltip : null} index={hoveredIndex} count={line.buckets.length} />
+        </span>
       </span>
     </div>
   );
 });
 
-const MultiPingMetricColumn = memo(function MultiPingMetricColumn({
-  lines,
-  metric,
-  density,
-  redrawKey,
-}: {
-  lines: HomepagePingDisplayLine[];
-  metric: MultiPingMetric;
-  density: MultiPingStatusDensity;
-  redrawKey: string;
-}) {
-  return (
-    <div
-      className="multi-ping-metric-column"
-      aria-label={metric === "latency" ? "延迟" : "丢包"}
-    >
-      {lines.map((line) => (
-        <MultiPingMetricRow
-          key={line.taskId}
-          line={line}
-          metric={metric}
-          density={density}
-          redrawKey={redrawKey}
-        />
-      ))}
-    </div>
-  );
-});
-
 export const MultiPingStatus = memo(function MultiPingStatus({
+  uuid,
+  name,
   lines,
   density,
   className,
 }: {
+  uuid: string;
+  name: string;
   lines: HomepagePingDisplayLine[];
   density: MultiPingStatusDensity;
   className?: string;
@@ -159,27 +121,20 @@ export const MultiPingStatus = memo(function MultiPingStatus({
   const { resolvedAppearance } = usePreferences();
   const colorsVersion = useMetricColorsVersion();
   const redrawKey = `${resolvedAppearance}:${colorsVersion}`;
+  const [networkOpen, setNetworkOpen] = useState(false);
 
   return (
+    <>
     <div
       className={clsx("multi-ping-status", `is-${density}`, className)}
       role="group"
-      aria-label="三网延迟与丢包"
+      aria-label="自定义线路延迟与丢包"
     >
-      <div className="multi-ping-columns">
-        <MultiPingMetricColumn
-          lines={lines}
-          metric="latency"
-          density={density}
-          redrawKey={redrawKey}
-        />
-        <MultiPingMetricColumn
-          lines={lines}
-          metric="loss"
-          density={density}
-          redrawKey={redrawKey}
-        />
-      </div>
+      {lines.map((line) => (
+        <PingLineRow key={line.taskId} line={line} density={density} redrawKey={redrawKey} onOpen={() => setNetworkOpen(true)} />
+      ))}
     </div>
+    {networkOpen && <NodeNetworkDialog uuid={uuid} name={name} onClose={() => setNetworkOpen(false)} />}
+    </>
   );
 });

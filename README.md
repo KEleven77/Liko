@@ -1,3 +1,42 @@
+# Liko
+
+基于 [WAOR/Komari-Theme-SAO](https://github.com/WAOR/Komari-Theme-SAO) 二次开发的 Lite 探针主题，维护者：Liko。
+
+## 安装
+
+1. 从 [Liko Releases](https://github.com/KEleven77/Liko/releases) 下载主题 ZIP。
+2. 备份现有主题及配置，在 Lite 后台主题管理中上传并启用。
+3. 在 Liko 主题设置中选择默认三条探测线路；需要独立显示的服务器可勾选 1 到 8 条任务。
+
+后台探测任务负责采集数据，主题设置负责首页展示。新增后台任务不会自动加入首页，需在对应服务器的主题设置中勾选并保存。
+
+## 定制内容
+
+- 默认三条线路，支持逐服务器独立配置或隐藏。
+- 延迟与丢包率并排展示，分别对应历史指标条。
+- 点击网络区域打开服务器网络弹窗，支持时间范围及可点击彩色图例。
+- 网络弹窗最大宽度 1120px，支持移动端自适应。
+- 压缩首页监控总览布局，改进设置保存反馈。
+
+## 本地开发
+
+使用 Node.js 22 或兼容当前 Vite 版本的更新版本。
+
+```sh
+npm ci
+npm run dev
+npm test
+npm run package
+```
+
+本地模拟预览使用 `/?mock=1&admin=1&customPing=1`，仅开发模式生效，生产包不包含模拟接口。
+
+## 来源说明
+
+Liko 保留上游项目的历史和来源说明。下方为原项目文档，SAO 系列其他服务端版本的说明不代表 Liko 已完成兼容验证。上游 README 声明 MIT，但当前上游检出未包含独立 LICENSE 文件，本文不新增或替换原作者的许可证声明。
+
+---
+
 <p align="center">
   <strong>面向多种探针服务端的 SAO 系列探针主题</strong>
 </p>

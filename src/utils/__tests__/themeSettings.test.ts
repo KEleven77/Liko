@@ -24,8 +24,9 @@ describe("normalizeThemeSettings", () => {
     expect(normalizeThemeSettings({ showOverviewRatings: false }).showOverviewRatings).toBe(false);
   });
 
-  it("normalizes homepage multi-ping tasks while preserving an enabled draft for repair", () => {
-    expect(normalizeThemeSettings({}).enableHomepageMultiPing).toBe(false);
+  it("always enables three default homepage tasks and normalizes their order", () => {
+    expect(normalizeThemeSettings({}).enableHomepageMultiPing).toBe(true);
+    expect(normalizeThemeSettings({}).homepageMultiPingTaskIds).toEqual([1, 2, 3]);
     expect(
       normalizeThemeSettings({
         enableHomepageMultiPing: true,
@@ -38,7 +39,7 @@ describe("normalizeThemeSettings", () => {
       homepageMultiPingTaskIds: [3, 1, 3, 2, 4],
     });
     expect(resolved.enableHomepageMultiPing).toBe(true);
-    expect(resolved.homepageMultiPingTaskIds).toEqual([3, 1, 2, 4]);
+    expect(resolved.homepageMultiPingTaskIds).toEqual([3, 1, 2]);
   });
 
   it("defaults home sort to weight ascending and falls back to a field's natural direction", () => {
