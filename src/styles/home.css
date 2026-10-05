@@ -338,7 +338,7 @@
   min-height: 78px;
   height: 100%;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
-  transition: all 180ms ease;
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
 }
 
 :root[data-appearance="dark"] .mao-stat-card {
@@ -827,11 +827,12 @@
   border-radius: 22px;
   background: var(--surface-elev, #eaecf0);
   padding: clamp(16px, 2vw, 24px);
+  padding-block: 20px;
   margin-bottom: 24px;
   box-shadow: none;
   position: relative;
   z-index: 1;
-  gap: 16px;
+  gap: 12px;
 }
 
 :root[data-appearance="dark"] .mao-cluster-card {
@@ -844,8 +845,8 @@
 .mao-section-header {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin: 0 0 4px;
+  gap: 12px;
+  margin: 0;
   width: 100%;
 }
 
@@ -1563,7 +1564,7 @@
   border-radius: 999px;
   background: currentColor;
   flex-shrink: 0;
-  will-change: opacity, box-shadow;
+  box-shadow: 0 0 5px 1.5px var(--badge-glow);
   animation-duration: 2s;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
@@ -1598,12 +1599,12 @@
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(47, 158, 101, 0.6);
+    transform: scale(1);
   }
 
   50% {
     opacity: 0.28;
-    box-shadow: 0 0 5px 1.5px rgba(47, 158, 101, 0.35);
+    transform: scale(1.12);
   }
 }
 
@@ -1612,12 +1613,12 @@
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-500) 60%, transparent);
+    transform: scale(1);
   }
 
   50% {
     opacity: 0.28;
-    box-shadow: 0 0 5px 1.5px color-mix(in srgb, var(--accent-500) 35%, transparent);
+    transform: scale(1.16);
   }
 }
 
@@ -1626,12 +1627,12 @@
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6);
+    transform: scale(1);
   }
 
   50% {
     opacity: 0.28;
-    box-shadow: 0 0 5px 1.5px rgba(245, 158, 11, 0.4);
+    transform: scale(1.2);
   }
 }
 
@@ -1640,12 +1641,12 @@
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.65);
+    transform: scale(1);
   }
 
   50% {
     opacity: 0.28;
-    box-shadow: 0 0 5px 1.5px rgba(244, 63, 94, 0.45);
+    transform: scale(1.24);
   }
 }
 
@@ -1711,7 +1712,9 @@
 }
 
 .home-group-tabs {
-  display: inline-flex;
+  display: flex;
+  width: 100%;
+  flex: 1 1 0;
   min-width: 0;
   align-items: center;
   gap: 3px;
@@ -1730,9 +1733,9 @@
 
 .home-group-tabs button {
   display: inline-flex;
-  flex: 1 0 auto;
+  flex: 1 0 0;
+  min-width: max-content;
   min-height: 28px;
-  max-width: 240px;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -1747,7 +1750,7 @@
   white-space: nowrap;
   background: transparent;
   cursor: pointer;
-  transition: all 160ms ease;
+  transition: color 160ms ease, background-color 160ms ease;
 }
 
 .home-group-tabs button:hover {
@@ -1822,7 +1825,6 @@
 
   .home-group-tabs button {
     min-height: 30px;
-    max-width: 200px;
     padding: 0 10px;
     font-size: 11px;
   }
@@ -1830,7 +1832,7 @@
 
 /* 地区筛选栏：流式胶囊标签组，去除多余内层厚重大框 */
 .home-region-bar {
-  margin-bottom: 8px;
+  margin-bottom: 0;
   padding: 0;
   border: none;
   border-radius: 0;
@@ -1861,7 +1863,7 @@
   white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-  transition: all 160ms ease;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
 }
 
 :root[data-appearance="dark"] .home-region-chip {
@@ -1914,7 +1916,7 @@
   font-size: 10px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  transition: all 160ms ease;
+  transition: color 160ms ease, background-color 160ms ease;
 }
 
 :root[data-appearance="dark"] .home-region-chip-count {
@@ -1945,9 +1947,13 @@
   padding-top: 0px;
 }
 
-/* 首页控件条复用卡片网格列定义：分组标签落在第一列，排序控件钉在最后一列。 */
+/* Group selector spans the card grid; optional sorting stays at its right edge. */
 .home-controls-bar {
+  display: flex;
   align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
 }
 
 .home-sort {
@@ -1955,8 +1961,8 @@
 }
 
 .home-controls-bar .home-sort {
-  grid-column: -2 / -1;
-  justify-self: end;
+  flex: 0 0 auto;
+  margin-inline-start: auto;
   align-self: center;
 }
 
@@ -1975,7 +1981,7 @@
   white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-  transition: all 160ms ease;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
 }
 
 :root[data-appearance="dark"] .home-sort-trigger {
@@ -2014,28 +2020,6 @@
 
 .home-sort-item[data-active="true"] svg {
   color: var(--accent-500);
-}
-
-/* 移动端让分组与排序并排；分组可横向滚动，排序保持在右侧。 */
-@media (max-width: 768px) {
-  .home-controls-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .home-controls-bar .home-group-tabs {
-    flex: 1 1 auto;
-    width: auto;
-    min-width: 0;
-  }
-
-  .home-controls-bar .home-sort {
-    grid-column: auto;
-    align-self: auto;
-    flex: 0 0 auto;
-    margin-inline-start: auto;
-  }
 }
 
 @media (min-width: 1024px) {
@@ -2117,7 +2101,11 @@
   }
 
   .mao-section-header {
-    gap: 12px;
+    gap: 10px;
+  }
+
+  .mao-cluster-card {
+    padding-block: 16px;
   }
 
   .mao-hero-subtitle,

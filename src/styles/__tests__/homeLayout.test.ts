@@ -23,6 +23,20 @@ const appShellSource = readFileSync(
 const routerSource = readFileSync(new URL("../../router.tsx", import.meta.url), "utf8");
 
 describe("home responsive layout contracts", () => {
+  it("spans group tabs across the grid instead of a single card column", () => {
+    expect(homeCss).toMatch(/\.home-group-tabs \{[\s\S]*?width: 100%;[\s\S]*?flex: 1 1 0;/);
+    expect(homeCss).toMatch(/\.home-group-tabs button \{[\s\S]*?flex: 1 0 0;/);
+    expect(nodeGridSource).toContain('className="home-controls-bar"');
+    expect(nodeGridSource).not.toContain("borrowControlsGrid");
+  });
+
+  it("uses one spacing source between cluster filters and cards", () => {
+    expect(homeCss).toMatch(/\.mao-cluster-card \{[^}]*gap: 12px;/);
+    expect(homeCss).toMatch(/\.mao-section-header \{[^}]*gap: 12px;[^}]*margin: 0;/);
+    expect(homeCss).toMatch(/\.home-region-bar \{[^}]*margin-bottom: 0;/);
+    expect(nodeGridSource).not.toContain('className="home-controls-bar mb-4"');
+  });
+
   it("uses an explicit expanded state through tablet widths without :has()", () => {
     expect(homeCss).not.toContain(":has(");
     expect(homeCss).toMatch(/@media \(max-width: 1023px\)[\s\S]*\.home-dashboard\.is-controls-expanded \.home-brand/);

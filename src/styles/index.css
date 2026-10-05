@@ -114,3 +114,13 @@ html.theme-flip *::after {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

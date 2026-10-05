@@ -6,7 +6,7 @@ export function ChartTooltip({ tooltip }: { tooltip: ChartTooltipState }) {
     <div
       aria-hidden="true"
       className="instance-chart-tooltip"
-      style={{ left: tooltip.left, top: tooltip.top }}
+      style={{ transform: `translate3d(${tooltip.left}px, ${tooltip.top}px, 0)` }}
     >
       <div className="instance-chart-tooltip-time">{tooltip.time}</div>
       {tooltip.rows.map((row, index) => (

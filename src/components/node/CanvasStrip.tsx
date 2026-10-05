@@ -395,14 +395,15 @@ export function CanvasStrip({
   const lastHoverIndexRef = useRef<number | null>(null);
   const hoverAnimationFrameRef = useRef<number | null>(null);
   const interactionRef = useRef<CanvasStripInteraction>({ hoverIndex: null, hoverProgress: 0 });
-  const [interaction, setInteraction] = useState<CanvasStripInteraction>(interactionRef.current);
+  const paintRef = useRef<(() => void) | null>(null);
   const [width, setWidth] = useState(0);
   const [visible, setVisible] = useState(() => typeof IntersectionObserver === "undefined");
   const dpr = useSyncExternalStore(subscribeToDpr, currentDpr, () => 1);
 
   const commitInteraction = (next: CanvasStripInteraction) => {
     interactionRef.current = next;
-    setInteraction(next);
+    // Hover frames only repaint the bitmap; React handles data and size changes.
+    paintRef.current?.();
   };
 
   const animateHover = (hoverIndex: number | null, target: 0 | 1) => {
@@ -469,7 +470,14 @@ export function CanvasStrip({
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !visible || width <= 0) return;
+    if (!canvas || !visible || width <= 0) {
+      paintRef.current = null;
+      if (hoverAnimationFrameRef.current != null) {
+        cancelAnimationFrame(hoverAnimationFrameRef.current);
+        hoverAnimationFrameRef.current = null;
+      }
+      return;
+    }
 
     const pixelWidth = Math.max(1, Math.round(width * dpr));
     const pixelHeight = Math.max(1, Math.round(height * dpr));
@@ -481,11 +489,16 @@ export function CanvasStrip({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.globalAlpha = 1;
-    ctx.clearRect(0, 0, width, height);
-    draw(ctx, width, height, interaction);
-  }, [dpr, draw, height, interaction, redrawKey, visible, width]);
+    const paint = () => {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.globalAlpha = 1;
+      ctx.clearRect(0, 0, width, height);
+      draw(ctx, width, height, interactionRef.current);
+    };
+    paintRef.current = paint;
+    paint();
+    return () => { paintRef.current = null; };
+  }, [dpr, draw, height, redrawKey, visible, width]);
 
   const handlePointerLeave = () => {
     if (lastHoverIndexRef.current === null) return;

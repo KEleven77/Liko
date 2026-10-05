@@ -925,7 +925,7 @@ export function NodeGrid() {
   // 地区栏:只有一个地区时筛选无意义,>1 才显示。
   const showRegionBar =
     themeSettings.isReady && themeSettings.showRegionBar && regionOptions.length > 1;
-  // 分组标签栏与卡片网格共用列定义，让标签栏左缘对齐首卡。
+  // Card columns remain independent of the full-width group selector.
   const isMini = mode === "mini";
   const isList = mode === "list";
   const { className: gridClassName, minColumnWidth } = GRID_LAYOUT[mode];
@@ -940,16 +940,6 @@ export function NodeGrid() {
       {cards}
     </div>
   );
-  // 迷你与列表档的控件栏借用小卡列宽，避免跟随密集内容列而被压窄。
-  const borrowControlsGrid = isMini || isList;
-  const controlsWrapClassName = borrowControlsGrid
-    ? "grid gap-3 home-controls-bar mb-4"
-    : `${gridWrapClassName} home-controls-bar mb-4`;
-  const controlsStyle = borrowControlsGrid
-    ? {
-      gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${GRID_LAYOUT.compact.minColumnWidth}px), 1fr))`,
-    }
-    : gridStyle;
 
   if (!themeSettings.isReady || !storeHydrated) {
     if (!nodeInfoError) return null;
@@ -1032,7 +1022,7 @@ export function NodeGrid() {
           </div>
         )}
         {((!showHomeOverview && showHomeSort) || showGroupTabs) && (
-          <div className={controlsWrapClassName} style={controlsStyle}>
+          <div className="home-controls-bar">
             {showGroupTabs && (
               <GroupTabs
                 groups={groupOptions}
