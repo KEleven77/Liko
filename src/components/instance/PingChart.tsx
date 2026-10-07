@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import UplotReact from "uplot-react";
+import "uplot/dist/uPlot.min.css";
 import type uPlot from "uplot";
 import { Eye, EyeOff, RefreshCw, Info } from "lucide-react";
 import { usePingRecords } from "@/hooks/useRecords";
@@ -119,8 +120,8 @@ export function PingChart({
     isFetching,
     isLoading,
     refetch: refetchRecords,
-  } = usePingRecords(uuid, hours, active);
-  // stats 随 records 同一次请求返回(getPingRecords includeStats),不再单独发起查询。
+  } = usePingRecords(uuid, hours, active, networkDialog);
+  // Network dialogs render records immediately and enrich statistics in the background.
   const pingStats = data?.stats ?? EMPTY_PING_STATS;
   const { resolvedAppearance } = usePreferences();
   const { w, h, ref: chartSizeRef } = useResponsiveChartSize("wide");
@@ -137,7 +138,10 @@ export function PingChart({
   });
   const isDark = resolvedAppearance === "dark";
   // API 顺序与后台任务权重一致，响应本身不一定包含可重排的权重。
-  const tasks = useMemo(() => [...(data?.tasks ?? [])], [data]);
+  const tasks = useMemo(() => [...(data?.tasks ?? [])], [data?.tasks]);
+  const intervalSeconds = data?.intervalSeconds;
+  const rangeStartMs = data?.rangeStartMs;
+  const rangeEndMs = data?.rangeEndMs;
   const taskLabels = useMemo(() => {
     const counts = new Map<string, number>();
     for (const task of tasks) {
@@ -183,7 +187,7 @@ export function PingChart({
     });
   }, [tasks]);
 
-  // 只依赖 data:切换削峰等开关时不重跑解析/排序。
+  // Statistics enrichment must not reparse records or rebuild curve geometry.
   const sortedRecords = useMemo(
     () =>
       (data?.records ?? [])
@@ -193,11 +197,11 @@ export function PingChart({
         }))
         .filter(({ time }) => time > 0)
         .sort((left, right) => left.time - right.time),
-    [data],
+    [data?.records],
   );
 
   const chart = useMemo(() => {
-    if (!data?.records.length || !tasks.length) return null;
+    if (!sortedRecords.length || !tasks.length) return null;
     const pointMap = new Map<number, TimedMetricPoint>();
     const taskIntervals = tasks
       .map((task) => task.interval)
@@ -207,7 +211,7 @@ export function PingChart({
       60,
     );
     const fallbackInterval = resolvePingChartInterval(
-      data.intervalSeconds,
+      intervalSeconds,
       taskIntervals.length > 0 ? Math.min(...taskIntervals) : null,
       detectedInterval,
     );
@@ -233,7 +237,7 @@ export function PingChart({
       intervals: new Map(
         tasks.map((task) => [
           String(task.id),
-          resolvePingChartInterval(data.intervalSeconds, task.interval, fallbackInterval),
+          resolvePingChartInterval(intervalSeconds, task.interval, fallbackInterval),
         ] as const),
       ),
       defaultInterval: fallbackInterval,
@@ -252,26 +256,25 @@ export function PingChart({
     );
 
     return [reduced.times, ...smoothed] as uPlot.AlignedData;
-  }, [cutPeak, data, sortedRecords, taskKeySet, taskKeys, tasks]);
+  }, [cutPeak, intervalSeconds, sortedRecords, taskKeySet, taskKeys, tasks]);
 
   useEffect(() => {
     if (chart) chartRef.current = chart;
   }, [chart]);
 
-  const requestedXRange = useMemo(() => historyChartRangeSeconds(data), [data]);
+  const requestedXRange = useMemo(() => historyChartRangeSeconds({ rangeStartMs, rangeEndMs }), [rangeStartMs, rangeEndMs]);
   const coverageMeta = useMemo(() => {
-    if (!data) return null;
     const taskIntervals = tasks
       .map((task) => task.interval)
       .filter((value) => Number.isFinite(value) && value > 0);
     return {
-      rangeStartMs: data.rangeStartMs,
-      rangeEndMs: data.rangeEndMs,
+      rangeStartMs,
+      rangeEndMs,
       intervalSeconds:
-        data.intervalSeconds ??
+        intervalSeconds ??
         (taskIntervals.length > 0 ? Math.min(...taskIntervals) : undefined),
     };
-  }, [data, tasks]);
+  }, [rangeStartMs, rangeEndMs, intervalSeconds, tasks]);
   const coverageLabel = useMemo(() => {
     const times = chart?.[0];
     if (!times?.length) return null;
@@ -461,33 +464,26 @@ export function PingChart({
     setHiddenTasks((prev) => (prev.size === 0 ? new Set(tasks.map((task) => task.id)) : new Set()));
   };
 
-  if (isLoading) {
+  if (isLoading && !networkDialog) {
     return <InstanceChartLoading title="Ping 图表" />;
   }
 
-  if (isError && !data?.records.length) {
+  if (isLoading || !data?.records.length) {
     return (
-      <InstancePanel title="Ping 图表">
-        <div className="instance-empty">
-          <span>延迟历史加载失败</span>
-          <button
+      <InstancePanel title="Ping 图表" className={networkDialog ? "network-ping-panel" : undefined}>
+        {networkDialog && <div className="network-ping-controls">{rangeControls}</div>}
+        <div className="instance-empty" aria-busy={isLoading}>
+          <span>{isLoading ? "加载中…" : isError ? "延迟历史加载失败" : "暂无延迟记录"}</span>
+          {!isLoading && <button
             type="button"
             className="instance-toggle-button"
             onClick={refetchAll}
             disabled={isFetching}
             aria-busy={isFetching}
           >
-            {isFetching ? "重试中" : "重试"}
-          </button>
+            {isFetching ? "刷新中" : isError ? "重试" : "刷新"}
+          </button>}
         </div>
-      </InstancePanel>
-    );
-  }
-
-  if (!data?.records.length) {
-    return (
-      <InstancePanel title="Ping 图表">
-        <div className="instance-empty">暂无延迟记录</div>
       </InstancePanel>
     );
   }

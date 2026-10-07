@@ -1,7 +1,8 @@
-import { memo, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { clsx } from "clsx";
 import { useMetricColorsVersion } from "@/hooks/useMetricColors";
 import { usePreferences } from "@/hooks/usePreferences";
+import { useThemeSettings } from "@/hooks/useThemeSettings";
 import type { HomepagePingDisplayLine } from "@/types/komari";
 import { latencyHeatColor, lossHeatColor } from "@/utils/metricTone";
 import { HealthBucketTooltip } from "./HealthBucketTooltip";
@@ -9,6 +10,7 @@ import { LatencyBars } from "./LatencyBars";
 import { QualityBars } from "./QualityBars";
 import { formatCombinedPingBucketTooltip } from "./pingBucketText";
 import { NodeNetworkDialog } from "./NodeNetworkDialog";
+import { PingSparkline } from "./PingSparkline";
 
 type MultiPingStatusDensity = "large" | "compact";
 
@@ -105,6 +107,47 @@ const PingLineRow = memo(function PingLineRow({
   );
 });
 
+const SparklineRow = memo(function SparklineRow({ line, redrawKey, onOpen }: {
+  line: HomepagePingDisplayLine;
+  redrawKey: string;
+  onOpen: () => void;
+}) {
+  const emptyLabel = line.loadState === "pending" ? "加载中"
+    : line.loadState === "error" ? "加载失败" : "无样本";
+  const latencyColor = line.lastValue == null ? "var(--text-tertiary)" : latencyHeatColor(line.lastValue);
+  const stale = line.loadState === "error" && line.lastValue != null;
+  const open = (event: React.MouseEvent<HTMLButtonElement>) => { event.stopPropagation(); onOpen(); };
+  return (
+    <div className="multi-ping-sparkline-row" data-load-state={line.loadState ?? "ready"}>
+      <button
+        type="button"
+        className="multi-ping-sparkline-summary"
+        onClick={open}
+        aria-haspopup="dialog"
+        aria-label={`查看 ${line.taskName} 所属服务器的网络详情`}
+        title={`${line.taskName}${stale ? " · 刷新失败，显示上次数据" : ""}`}
+      >
+        <span className="multi-ping-name">{line.taskName}</span>
+        <strong className="multi-ping-value tabular" style={{ color: latencyColor }}>
+          {line.lastValue == null ? emptyLabel : Math.round(line.lastValue)}
+          {line.lastValue != null && <small>ms</small>}
+        </strong>
+      </button>
+      <PingSparkline buckets={line.buckets} name={line.taskName} color={latencyColor} redrawKey={redrawKey} />
+      <button
+        type="button"
+        className="multi-ping-sparkline-loss multi-ping-loss tabular"
+        style={{ color: line.loss == null ? "var(--text-tertiary)" : lossHeatColor(line.loss) }}
+        aria-label={`${line.taskName} 丢包 ${line.loss == null ? emptyLabel : `${line.loss.toFixed(1)}%`}，查看网络详情`}
+        aria-haspopup="dialog"
+        onClick={open}
+      >
+        <small>丢包</small> {line.loss == null ? emptyLabel : `${line.loss.toFixed(1)}%`}
+      </button>
+    </div>
+  );
+});
+
 export const MultiPingStatus = memo(function MultiPingStatus({
   uuid,
   name,
@@ -119,22 +162,27 @@ export const MultiPingStatus = memo(function MultiPingStatus({
   className?: string;
 }) {
   const { resolvedAppearance } = usePreferences();
+  const { homepagePingDisplayMode } = useThemeSettings();
   const colorsVersion = useMetricColorsVersion();
   const redrawKey = `${resolvedAppearance}:${colorsVersion}`;
   const [networkOpen, setNetworkOpen] = useState(false);
+  const openNetwork = useCallback(() => setNetworkOpen(true), []);
+  const closeNetwork = useCallback(() => setNetworkOpen(false), []);
 
   return (
     <>
     <div
-      className={clsx("multi-ping-status", `is-${density}`, className)}
+      className={clsx("multi-ping-status", `is-${density}`, homepagePingDisplayMode === "sparkline" && "is-sparkline", className)}
       role="group"
       aria-label="自定义线路延迟与丢包"
     >
       {lines.map((line) => (
-        <PingLineRow key={line.taskId} line={line} density={density} redrawKey={redrawKey} onOpen={() => setNetworkOpen(true)} />
+        homepagePingDisplayMode === "sparkline"
+          ? <SparklineRow key={line.taskId} line={line} redrawKey={redrawKey} onOpen={openNetwork} />
+          : <PingLineRow key={line.taskId} line={line} density={density} redrawKey={redrawKey} onOpen={openNetwork} />
       ))}
     </div>
-    {networkOpen && <NodeNetworkDialog uuid={uuid} name={name} onClose={() => setNetworkOpen(false)} />}
+    {networkOpen && <NodeNetworkDialog uuid={uuid} name={name} onClose={closeNetwork} />}
     </>
   );
 });

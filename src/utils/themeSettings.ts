@@ -26,6 +26,7 @@ import {
 
 export type Appearance = "system" | "light" | "dark";
 export type NodeViewMode = "large" | "compact" | "mini" | "list";
+export type HomepagePingDisplayMode = "bars" | "sparkline";
 
 export interface ResolvedThemeSettings {
   defaultAppearance: Appearance;
@@ -37,6 +38,7 @@ export interface ResolvedThemeSettings {
   homepagePingTaskIdsByClient: HomepagePingTaskIdsByClient;
   enableHomepageMultiPing: boolean;
   homepageMultiPingTaskIds: number[];
+  homepagePingDisplayMode: HomepagePingDisplayMode;
   fakePingForUnbound: boolean;
   showHomeOverview: boolean;
   showGroupTabs: boolean;
@@ -77,6 +79,7 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   homepagePingTaskIdsByClient: {},
   enableHomepageMultiPing: true,
   homepageMultiPingTaskIds: [...DEFAULT_HOMEPAGE_MULTI_PING_TASK_IDS],
+  homepagePingDisplayMode: "bars",
   fakePingForUnbound: false,
   showHomeOverview: true,
   showGroupTabs: true,
@@ -187,6 +190,7 @@ export function normalizeThemeSettings(
     ),
     enableHomepageMultiPing: true,
     homepageMultiPingTaskIds,
+    homepagePingDisplayMode: settings?.homepagePingDisplayMode === "sparkline" ? "sparkline" : "bars",
     // 默认关闭(需手动开启):给访客展示的是模拟数据,必须由站长显式决定。
     fakePingForUnbound: settings?.fakePingForUnbound === true,
     showHomeOverview: enabledUnlessFalse(settings?.showHomeOverview),

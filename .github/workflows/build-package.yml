@@ -3,6 +3,11 @@ name: Build theme package
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
+    paths:
+      - package.json
+      - komari-theme.json
     tags:
       - "v*"
 
@@ -45,23 +50,52 @@ jobs:
             *.zip
             preview.png
 
+      - name: Resolve release version
+        id: release-version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version=$(node -p "JSON.parse(require('fs').readFileSync('komari-theme.json', 'utf8')).version")
+          tag="v${version}"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            [[ "$GITHUB_REF_NAME" == "$tag" ]] || { echo "Tag and manifest versions differ"; exit 1; }
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
+            status=$(curl -sS -o /tmp/liko-release.json -w '%{http_code}' \
+              -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/tags/$tag")
+            if [[ "$status" == 404 ]]; then
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+            elif [[ "$status" == 200 ]]; then
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "Release lookup failed: HTTP $status"; exit 1
+            fi
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Resolve release notes
-        if: startsWith(github.ref, 'refs/tags/')
+        if: steps.release-version.outputs.publish == 'true'
         id: release-notes
         shell: bash
         run: |
-          notes=".github/release-notes/${GITHUB_REF_NAME}.md"
+          notes=".github/release-notes/${{ steps.release-version.outputs.tag }}.md"
           if [[ -f "$notes" ]]; then
             echo "path=$notes" >> "$GITHUB_OUTPUT"
           else
-            echo "Release ${GITHUB_REF_NAME}" > default-notes.md
+            echo "Release ${{ steps.release-version.outputs.tag }}" > default-notes.md
             echo "path=default-notes.md" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: steps.release-version.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.release-version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             *.zip
             preview.png

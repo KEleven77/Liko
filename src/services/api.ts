@@ -268,6 +268,7 @@ async function apiGet<T>(
   schema: z.ZodType<T>,
   options?: { signal?: AbortSignal; timeout?: number },
 ): Promise<T> {
+  const deadline = Date.now() + (options?.timeout ?? DEFAULT_API_TIMEOUT_MS);
   const earlyKey =
     path === "/api/public"
       ? "public"
@@ -283,12 +284,19 @@ async function apiGet<T>(
     if (earlyPromise) {
       earlyObj[earlyKey] = null;
       try {
-        const json = await earlyPromise;
+        const json = await waitForSharedRequest(
+          earlyPromise,
+          options?.signal,
+          remainingRequestTimeout(deadline),
+        );
         if (json != null) {
           return parseApiResponse(json, path, schema, 200);
         }
       } catch (err) {
-        if (err instanceof ApiRequestError) throw err;
+        if (
+          err instanceof ApiRequestError || options?.signal?.aborted ||
+          (err instanceof DOMException && err.name === "TimeoutError")
+        ) throw err;
       }
     }
   }
@@ -299,7 +307,7 @@ async function apiGet<T>(
       credentials: "include",
       headers: { Accept: "application/json" },
     },
-    options?.timeout ?? DEFAULT_API_TIMEOUT_MS,
+    remainingRequestTimeout(deadline) ?? DEFAULT_API_TIMEOUT_MS,
     options?.signal,
   );
   if (!resp.ok) {
@@ -1061,7 +1069,7 @@ export async function getTodayTrafficMetrics(
 export async function getPingRecords(
   uuid: string,
   hours = 6,
-  options?: ApiCallOptions,
+  options?: ApiCallOptions & { includeStats?: boolean },
 ): Promise<PingRecordsResponse> {
   const requestRange = createRequestRange(hours);
   try {
@@ -1071,7 +1079,7 @@ export async function getPingRecords(
       hours,
       entityIds: [uuid],
       maxPoints: DETAIL_METRIC_MAX_POINTS,
-      includeStats: true,
+      includeStats: options?.includeStats ?? true,
       signal: options?.signal,
       timeout: options?.timeout,
     });

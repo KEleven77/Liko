@@ -218,6 +218,14 @@ describe("metric boundary repair in the API adapter", () => {
     );
   });
 
+  it("returns dialog records without requesting optional statistics", async () => {
+    installRpcResponses({ hasGap: false });
+    const result = await getPingRecords("node-a", 1, { includeStats: false });
+    expect(result.records).toHaveLength(3);
+    expect(result.tasks[0].name).toBe("广州探测");
+    expect(rpcCallMock.mock.calls.some(([method]) => method === "public:getPingMetricStats")).toBe(false);
+  });
+
   it("batches homepage Ping statistics by task id", async () => {
     rpcCallMock.mockImplementation((method: string) => {
       if (method === "public:queryMetrics") {

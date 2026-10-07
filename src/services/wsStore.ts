@@ -782,8 +782,8 @@ async function performNodeInfoSync() {
   }
 }
 
-async function refreshLatestStatus() {
-  if (refreshInFlight || state.order.length === 0) return;
+async function refreshLatestStatus(nodeInfoReady?: Promise<void>) {
+  if (refreshInFlight || (state.order.length === 0 && !nodeInfoReady)) return;
   if (scrollActive) {
     refreshDeferredWhileScrolling = true;
     return;
@@ -793,10 +793,15 @@ async function refreshLatestStatus() {
   const controller = new AbortController();
   liveStatusController = controller;
   try {
-    const records = await getNodesLatestStatus([...state.order], {
-      timeout: LIVE_STATUS_REQUEST_TIMEOUT_MS,
-      signal: controller.signal,
-    });
+    // Bootstrap fetches authorized statuses concurrently, then applies them only
+    // after node metadata is ready. Subsequent polls keep their UUID filter.
+    const [records] = await Promise.all([
+      getNodesLatestStatus(nodeInfoReady ? undefined : [...state.order], {
+        timeout: LIVE_STATUS_REQUEST_TIMEOUT_MS,
+        signal: controller.signal,
+      }),
+      nodeInfoReady,
+    ]);
     if (controller.signal.aborted) return;
     const applied = applyLatestStatus(records);
     const metricsChanged = applied.touchedMetrics.length > 0;
@@ -829,6 +834,7 @@ async function refreshLatestStatus() {
       { storeStatus: true },
     );
   } finally {
+    controller.abort();
     if (liveStatusController === controller) liveStatusController = null;
     refreshInFlight = false;
   }
@@ -841,8 +847,10 @@ let bootstrapSkipTicks = 0;
 
 async function bootstrap() {
   try {
-    await syncNodeInfo();
-    await refreshLatestStatus();
+    const nodeInfoReady = syncNodeInfo();
+    const statusReady = refreshLatestStatus(nodeInfoReady);
+    await nodeInfoReady;
+    await statusReady;
     bootstrapBackoffTicks = 0;
     bootstrapSkipTicks = 0;
   } catch {

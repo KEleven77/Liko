@@ -165,16 +165,6 @@ function filterClients(clients: AdminClient[], rawKeyword: string) {
   });
 }
 
-function summarizeNodes(
-  uuids: string[],
-  clientsById: Map<string, AdminClient>,
-) {
-  if (uuids.length === 0) return "未绑定节点";
-  const names = uuids.map((uuid) => clientsById.get(uuid)?.name || uuid);
-  const summary = names.join("、");
-  return summary.length > 92 ? `${summary.slice(0, 92)}...` : summary;
-}
-
 function pruneBindings(bindings: HomepagePingTaskBindings) {
   const normalized = normalizeHomepagePingTaskBindings(bindings);
   const pruned: HomepagePingTaskBindings = {};
@@ -186,72 +176,6 @@ function pruneBindings(bindings: HomepagePingTaskBindings) {
   }
 
   return pruned;
-}
-
-function applyClientAssignment(
-  bindings: HomepagePingTaskBindings,
-  taskId: number,
-  clientUuid: string,
-  checked: boolean,
-) {
-  const taskKey = String(taskId);
-  const next = pruneBindings(bindings);
-
-  for (const [currentTaskId, clients] of Object.entries(next)) {
-    const filtered = clients.filter((uuid) => uuid !== clientUuid);
-    if (filtered.length > 0) {
-      next[currentTaskId] = filtered;
-    } else {
-      delete next[currentTaskId];
-    }
-  }
-
-  if (checked) {
-    const selected = next[taskKey] ?? [];
-    next[taskKey] = Array.from(new Set([...selected, clientUuid])).sort((left, right) =>
-      left.localeCompare(right),
-    );
-  }
-
-  return next;
-}
-
-// 反查:client uuid → 所属 task id(字符串 key)。UI 保证每个 client 最多归属一个
-// task,所以简单的后写覆盖 map 就是精确的。下面的「全选可用」reducer 和每次渲染的
-// 可选节点过滤共用它,把「某 client 归属哪个 task」的推导收在一处。
-function invertBindings(bindings: HomepagePingTaskBindings): Map<string, string> {
-  const assignedTaskByClient = new Map<string, string>();
-  for (const [taskId, clients] of Object.entries(bindings)) {
-    for (const clientUuid of clients) {
-      assignedTaskByClient.set(clientUuid, taskId);
-    }
-  }
-  return assignedTaskByClient;
-}
-
-function applyAvailableClientAssignments(
-  bindings: HomepagePingTaskBindings,
-  taskId: number,
-  clientUuids: string[],
-) {
-  const taskKey = String(taskId);
-  const next = pruneBindings(bindings);
-  const assignedTaskByClient = invertBindings(next);
-  const selected = new Set(next[taskKey] ?? []);
-
-  for (const clientUuid of clientUuids) {
-    const assignedTaskId = assignedTaskByClient.get(clientUuid);
-    if (assignedTaskId && assignedTaskId !== taskKey) continue;
-    selected.add(clientUuid);
-  }
-
-  if (selected.size > 0) {
-    next[taskKey] = [...selected].sort((left, right) => left.localeCompare(right));
-  } else {
-    delete next[taskKey];
-  }
-
-  return next;
 }
 
 // 本页托管设置的键清单唯一来源:草稿类型(ThemeDraft)、seed(draftFromSettings)与内容签名
@@ -266,6 +190,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     homepagePingTaskIdsByClient: settings.homepagePingTaskIdsByClient,
     enableHomepageMultiPing: settings.enableHomepageMultiPing,
     homepageMultiPingTaskIds: settings.homepageMultiPingTaskIds,
+    homepagePingDisplayMode: settings.homepagePingDisplayMode,
     fakePingForUnbound: settings.fakePingForUnbound,
     showHomeOverview: settings.showHomeOverview,
     showGroupTabs: settings.showGroupTabs,
@@ -426,181 +351,6 @@ function isThemeTabId(value: string | null): value is ThemeTabId {
 const BODY_BOTTOM_GAP = 2;
 const MIN_BODY_HEIGHT = 320;
 
-const EMPTY_ASSIGNED_CLIENTS: string[] = [];
-const EMPTY_ADMIN_CLIENTS: AdminClient[] = [];
-
-// 单个 Ping 任务的绑定卡片。memo:编辑无关设置的击键不再重渲任务列表;展开态的
-// tasks×clients 复选网格只在绑定/搜索/展开变化时重算。
-const TaskBindingSection = memo(function TaskBindingSection({
-  task,
-  assigned,
-  expanded,
-  clientsById,
-  visibleClients,
-  assignedTaskByClientUuid,
-  nodeSearch,
-  onNodeSearch,
-  onToggleExpand,
-  onPatchBindings,
-}: {
-  task: PingTask;
-  assigned: string[];
-  expanded: boolean;
-  clientsById: Map<string, AdminClient>;
-  visibleClients: AdminClient[];
-  assignedTaskByClientUuid: Map<string, string>;
-  nodeSearch: string;
-  onNodeSearch: (value: string) => void;
-  onToggleExpand: (taskId: number) => void;
-  onPatchBindings: (
-    updater: (prev: HomepagePingTaskBindings) => HomepagePingTaskBindings,
-  ) => void;
-}) {
-  const assignedSummary = summarizeNodes(assigned, clientsById);
-  // 过滤只有展开的任务需要;收起的卡片跳过,搜索输入不再对每个任务做 O(clients) 扫描。
-  const selectableVisibleClients = expanded
-    ? visibleClients.filter((client) => {
-        const assignedTaskId = assignedTaskByClientUuid.get(client.uuid);
-        return !assignedTaskId || assignedTaskId === String(task.id);
-      })
-    : EMPTY_ADMIN_CLIENTS;
-  const allVisibleSelectableAssigned =
-    selectableVisibleClients.length > 0 &&
-    selectableVisibleClients.every((client) => assigned.includes(client.uuid));
-  return (
-    <section className="surface-inset px-4 py-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[15px] font-semibold text-(--text-primary)">
-              {task.name || `任务 #${task.id}`}
-            </h3>
-            <span className="rounded-full border border-(--hairline) px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-(--text-tertiary)">
-              {task.type || "icmp"}
-            </span>
-            <span className="rounded-full border border-(--hairline) px-2 py-0.5 text-[10px] font-medium text-(--text-tertiary)">
-              {task.interval}s
-            </span>
-            <span className="rounded-full border border-(--hairline) px-2 py-0.5 text-[10px] font-medium text-(--text-tertiary)">
-              ID {task.id}
-            </span>
-          </div>
-          <div className="mt-2 text-[12px] text-(--text-secondary)">
-            <span className="font-medium text-(--text-primary)">
-              已绑定 {assigned.length} 个节点
-            </span>
-            <span className="mx-2 text-(--text-tertiary)">·</span>
-            <span title={task.target || ""}>{task.target || "未填写目标"}</span>
-          </div>
-          <p className="mt-2 text-[12px] text-(--text-tertiary)" title={assignedSummary}>
-            {assignedSummary}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {expanded && (
-            <button
-              type="button"
-              disabled={selectableVisibleClients.length === 0 || allVisibleSelectableAssigned}
-              onClick={() => {
-                onPatchBindings((prev) =>
-                  applyAvailableClientAssignments(
-                    prev,
-                    task.id,
-                    selectableVisibleClients.map((client) => client.uuid),
-                  ),
-                );
-              }}
-              className="theme-manage-button is-compact"
-            >
-              {allVisibleSelectableAssigned ? "已全选可用" : "全选可用"}
-            </button>
-          )}
-          {assigned.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                onPatchBindings((prev) => {
-                  const next = { ...prev };
-                  delete next[String(task.id)];
-                  return pruneBindings(next);
-                });
-              }}
-              className="theme-manage-button is-compact is-danger"
-            >
-              清空节点
-            </button>
-          )}
-          <button
-            type="button"
-            aria-expanded={expanded}
-            onClick={() => onToggleExpand(task.id)}
-            className="theme-manage-button is-compact"
-          >
-            {expanded ? "收起节点" : "编辑节点"}
-          </button>
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="mt-4 border-t border-(--hairline) pt-4">
-          <label className="surface-inset flex items-center gap-2 px-3 py-2">
-            <Search size={14} className="text-(--text-tertiary)" />
-            <input
-              value={nodeSearch}
-              onChange={(event) => onNodeSearch(event.target.value)}
-              placeholder="搜索节点名称 / UUID / 分组 / 地区"
-              aria-label="搜索节点"
-              className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-(--text-tertiary)"
-            />
-          </label>
-
-          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {visibleClients.map((client) => {
-              const checked = assigned.includes(client.uuid);
-              const subtitle = [client.group, client.uuid].filter(Boolean).join(" · ");
-              return (
-                <label
-                  key={client.uuid}
-                  className={clsx(
-                    "flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors",
-                    checked
-                      ? "border-(--border-strong) bg-[color-mix(in_srgb,var(--hover-bg)_72%,transparent)]"
-                      : "border-(--hairline) bg-transparent hover:bg-(--hover-bg)",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(event) => {
-                      const nextChecked = event.target.checked;
-                      onPatchBindings((prev) =>
-                        applyClientAssignment(prev, task.id, client.uuid, nextChecked),
-                      );
-                    }}
-                    className="mt-1 h-4 w-4 shrink-0 accent-(--accent-500)"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Flag region={client.region} size={14} />
-                      <span className="truncate text-[13px] font-medium text-(--text-primary)">
-                        {client.name}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-[11px] text-(--text-tertiary)">
-                      {subtitle || client.region || "未设置分组"}
-                    </div>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </section>
-  );
-});
-
 type PremiumDetail = ReturnType<typeof calculateCostSummary>["details"][number];
 
 // 溢价录入列表。memo:编辑其他设置的击键不重渲整表——引用变化只来自
@@ -736,9 +486,6 @@ export function ThemeManage() {
   const [draft, setDraft] = useState<ThemeDraft>(() =>
     draftFromSettings(DEFAULT_THEME_SETTINGS),
   );
-  const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
-  const [taskSearch, setTaskSearch] = useState("");
-  const [nodeSearch, setNodeSearch] = useState("");
   const [serverPingSearch, setServerPingSearch] = useState("");
   const [premiumSearch, setPremiumSearch] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -822,17 +569,6 @@ export function ThemeManage() {
     },
     [],
   );
-  // 绑定关系的三个入口(勾选/全选/清空)都是基于前值的函数式更新,单独收口。
-  const patchBindings = useCallback(
-    (updater: (prev: HomepagePingTaskBindings) => HomepagePingTaskBindings) => {
-      editVersionRef.current += 1;
-      setDraft((prev) => ({
-        ...prev,
-        homepagePingBindings: updater(prev.homepagePingBindings),
-      }));
-    },
-    [],
-  );
   const patchNodePingTasks = useCallback((uuid: string, taskIds: number[] | null) => {
     editVersionRef.current += 1;
     setDraft((prev) => {
@@ -842,14 +578,8 @@ export function ThemeManage() {
       return { ...prev, homepagePingTaskIdsByClient: next };
     });
   }, []);
-  const toggleTaskExpanded = useCallback((taskId: number) => {
-    setExpandedTaskId((current) => (current === taskId ? null : taskId));
-    setNodeSearch("");
-  }, []);
-
   const {
     data: pingTasks,
-    isLoading: tasksLoading,
     error: tasksError,
   } = useQuery({
     queryKey: ["admin", "ping-tasks"],
@@ -886,11 +616,6 @@ export function ThemeManage() {
 
   const sortedTasks = useMemo(() => sortTasks(pingTasks ?? []), [pingTasks]);
   const sortedClients = useMemo(() => sortClients(adminClients ?? []), [adminClients]);
-  const clientsById = useMemo(
-    () => new Map(sortedClients.map((client) => [client.uuid, client])),
-    [sortedClients],
-  );
-
   // 后端实际存在的分组,按首页 Tab 的渲染顺序排列(已配置的在前,未排序的在后)。
   // 用户直接拖动这个列表来调整顺序。
   const availableGroups = useMemo(
@@ -908,19 +633,6 @@ export function ThemeManage() {
     [next[index], next[target]] = [next[target], next[index]];
     patch("homeGroupOrder", next);
   };
-
-  const filteredTasks = useMemo(() => {
-    const keyword = taskSearch.trim().toLowerCase();
-    if (!keyword) return sortedTasks;
-    return sortedTasks.filter((task) => {
-      return (
-        task.name.toLowerCase().includes(keyword) ||
-        String(task.id).includes(keyword) ||
-        task.type.toLowerCase().includes(keyword) ||
-        task.target.toLowerCase().includes(keyword)
-      );
-    });
-  }, [sortedTasks, taskSearch]);
 
   const commitMultiPingTaskIds = useCallback(
     (updater: (current: number[]) => number[]) => {
@@ -945,10 +657,6 @@ export function ThemeManage() {
     [commitMultiPingTaskIds],
   );
 
-  const visibleClients = useMemo(
-    () => filterClients(sortedClients, nodeSearch),
-    [nodeSearch, sortedClients],
-  );
   const filteredPremiumClients = useMemo(
     () => filterClients(sortedClients, premiumSearch),
     [premiumSearch, sortedClients],
@@ -1143,14 +851,6 @@ export function ThemeManage() {
   }, [config, isDirty, sourceSignature, sourceThemeSettings, seedDrafts]);
 
 
-  // 每个 client 归属哪个 task 的反查,只在绑定草稿变化时重建。与「全选可用」reducer
-  // 共用 invertBindings() 避免推导漂移,并把可选节点过滤保持在 O(tasks × clients),
-  // 而不是每个 client 都重扫一遍 bindings。
-  const assignedTaskByClientUuid = useMemo(
-    () => invertBindings(draft.homepagePingBindings),
-    [draft.homepagePingBindings],
-  );
-
   const handleSave = async () => {
     if (!config?.theme) {
       setError("无法读取当前主题标识，请刷新页面后重试");
@@ -1252,8 +952,6 @@ export function ThemeManage() {
   const adminError =
     (tasksError instanceof Error ? tasksError.message : null) ||
     (clientsError instanceof Error ? clientsError.message : null);
-  const noTasksYet = !tasksLoading && !clientsLoading && sortedTasks.length === 0;
-  const noFilteredTaskMatch = !tasksLoading && !clientsLoading && !noTasksYet && filteredTasks.length === 0;
   const setRatingLabelDraft = (kind: OverviewRatingKind, value: string) => {
     editVersionRef.current += 1;
     setDraft((prev) => ({
@@ -1813,7 +1511,20 @@ export function ThemeManage() {
               >
                 <div className="flex flex-col gap-4">
                   <div className="surface-inset flex flex-col gap-3 px-4 py-4">
-                    <span className="setting-subhead-title">默认三条线路，逐服务器独立配置</span>
+                    <span className="setting-subhead-title">延迟显示样式</span>
+                    <div className="instance-segmented is-prominent is-even" role="group" aria-label="延迟显示样式">
+                      {(["bars", "sparkline"] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          data-active={draft.homepagePingDisplayMode === mode ? "true" : "false"}
+                          aria-pressed={draft.homepagePingDisplayMode === mode}
+                          onClick={() => patch("homepagePingDisplayMode", mode)}
+                        >
+                          {mode === "bars" ? "双栏指标条" : "三网 Sparkline"}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="surface-inset flex flex-col gap-3 px-4 py-4">
@@ -1838,14 +1549,9 @@ export function ThemeManage() {
                         draft.homepagePingTaskIdsByClient,
                         client.uuid,
                       );
-                      const inheritedTaskId = assignedTaskByClientUuid.get(client.uuid);
                       const selectedIds = hasOverride
                         ? draft.homepagePingTaskIdsByClient[client.uuid] ?? []
-                        : draft.enableHomepageMultiPing
-                          ? draft.homepageMultiPingTaskIds
-                          : inheritedTaskId
-                            ? [Number(inheritedTaskId)]
-                            : [];
+                        : draft.homepageMultiPingTaskIds;
                       return (
                         <details
                           key={client.uuid}
@@ -1913,7 +1619,6 @@ export function ThemeManage() {
                     })}
                   </div>
 
-                  {draft.enableHomepageMultiPing ? (
                     <div className="surface-inset flex flex-col gap-3 px-4 py-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
@@ -1953,81 +1658,6 @@ export function ThemeManage() {
                         </p>
                       )}
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-4">
-                      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(240px,320px)]">
-                        <label className="surface-inset flex items-center gap-2 px-3 py-2">
-                          <Search size={14} className="text-(--text-tertiary)" />
-                          <input
-                            value={taskSearch}
-                            onChange={(event) => setTaskSearch(event.target.value)}
-                            placeholder="搜索 Ping 任务名称 / ID / 类型 / 目标"
-                            aria-label="搜索 Ping 任务"
-                            className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-(--text-tertiary)"
-                          />
-                        </label>
-                        <div className="surface-inset flex items-center justify-between gap-3 px-3 py-2 text-[12px] text-(--text-secondary)">
-                          <span>首页绑定总数</span>
-                          <strong className="text-(--text-primary)">
-                            {`${sortedTasks.length} 个任务`}
-                          </strong>
-                        </div>
-                      </div>
-
-                      <ToggleRow
-                        field="fakePingForUnbound"
-                        title="未绑定线路时模拟平滑延迟"
-                        desc="避免部分节点空缺无条形码时影响整体美观（仅视觉平滑占位）。"
-                        checked={draft.fakePingForUnbound}
-                        onPatch={patch}
-                      />
-
-                      {(tasksLoading || clientsLoading) && (
-                        <div className="flex min-h-[20vh] items-center justify-center">
-                          <Spinner size={24} />
-                        </div>
-                      )}
-
-                      {noTasksYet && (
-                        <div className="theme-manage-empty-state">
-                          <span>当前还没有可用于首页展示的 Ping 任务。</span>
-                          <a href="/admin/ping" className="theme-manage-inline-link">
-                            前往后台 Ping 管理创建任务
-                          </a>
-                        </div>
-                      )}
-
-                      {noFilteredTaskMatch && (
-                        <div className="surface-inset px-4 py-5 text-[13px] text-(--text-secondary)">
-                          没有匹配的 Ping 任务。
-                        </div>
-                      )}
-
-                      {!tasksLoading &&
-                        !clientsLoading &&
-                        !noTasksYet &&
-                        filteredTasks.map((task) => {
-                          const expanded = expandedTaskId === task.id;
-                          return (
-                            <TaskBindingSection
-                              key={task.id}
-                              task={task}
-                              assigned={
-                                draft.homepagePingBindings[String(task.id)] ?? EMPTY_ASSIGNED_CLIENTS
-                              }
-                              expanded={expanded}
-                              clientsById={clientsById}
-                              visibleClients={expanded ? visibleClients : EMPTY_ADMIN_CLIENTS}
-                              assignedTaskByClientUuid={assignedTaskByClientUuid}
-                              nodeSearch={expanded ? nodeSearch : ""}
-                              onNodeSearch={setNodeSearch}
-                              onToggleExpand={toggleTaskExpanded}
-                              onPatchBindings={patchBindings}
-                            />
-                          );
-                        })}
-                    </div>
-                  )}
                 </div>
               </InstancePanel>
             </>

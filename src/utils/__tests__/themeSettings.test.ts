@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 import { normalizeThemeSettings } from "@/utils/themeSettings";
 
 describe("normalizeThemeSettings", () => {
+  it("keeps bars as the default and accepts only the explicit sparkline mode", () => {
+    expect(normalizeThemeSettings({}).homepagePingDisplayMode).toBe("bars");
+    expect(normalizeThemeSettings({ homepagePingDisplayMode: "sparkline" }).homepagePingDisplayMode).toBe("sparkline");
+    expect(normalizeThemeSettings({ homepagePingDisplayMode: "unknown" } as never).homepagePingDisplayMode).toBe("bars");
+    const settings = normalizeThemeSettings({
+      homepagePingDisplayMode: "sparkline",
+      homepagePingTaskIdsByClient: { node: [2, 4, 6, 8], hidden: [] },
+    });
+    expect(settings.homepageMultiPingTaskIds).toEqual([1, 2, 3]);
+    expect(settings.homepagePingTaskIdsByClient).toEqual({ node: [2, 4, 6, 8], hidden: [] });
+  });
+
   it("keeps mini and falls unknown saved view modes back to compact", () => {
     const settings = normalizeThemeSettings({
       desktopNodeViewMode: "retired-view",
@@ -40,6 +52,17 @@ describe("normalizeThemeSettings", () => {
     });
     expect(resolved.enableHomepageMultiPing).toBe(true);
     expect(resolved.homepageMultiPingTaskIds).toEqual([3, 1, 2]);
+  });
+
+  it("preserves legacy bindings even though the retired single-task editor is disabled", () => {
+    const settings = normalizeThemeSettings({
+      enableHomepageMultiPing: false,
+      homepagePingBindings: { "9": ["legacy-node"] },
+      homepagePingTaskIdsByClient: { custom: [4], hidden: [] },
+    });
+    expect(settings.enableHomepageMultiPing).toBe(true);
+    expect(settings.homepagePingBindings).toEqual({ "9": ["legacy-node"] });
+    expect(settings.homepagePingTaskIdsByClient).toEqual({ custom: [4], hidden: [] });
   });
 
   it("defaults home sort to weight ascending and falls back to a field's natural direction", () => {

@@ -21,8 +21,33 @@ describe("Early Data prefetch consumption", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     rpcCallMock.mockReset();
+  });
+
+  it("stops waiting for preloaded data immediately when navigation is cancelled", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    getEarlyWindow().__EARLY_DATA__ = { public: new Promise(() => {}) };
+    const controller = new AbortController();
+    const pending = getPublic({ signal: controller.signal });
+    controller.abort(new DOMException("Navigation changed", "AbortError"));
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("bounds a stalled preload by the caller's request timeout", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    getEarlyWindow().__EARLY_DATA__ = { public: new Promise(() => {}) };
+    const pending = getPublic({ timeout: 100 });
+    const rejected = expect(pending).rejects.toMatchObject({ name: "TimeoutError" });
+    await vi.advanceTimersByTimeAsync(100);
+    await rejected;
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("consumes early public config without initiating a new fetch roundtrip", async () => {
