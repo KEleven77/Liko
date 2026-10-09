@@ -8,11 +8,13 @@ import { buildPingSparklinePoints, pingSparklineIndex, createPingInspection, cur
 
 const SPARKLINE_HEIGHT = 26;
 
-export const PingSparkline = memo(function PingSparkline({ buckets, name, color, redrawKey }: {
+export const PingSparkline = memo(function PingSparkline({ buckets, name, color, redrawKey, onOpen, height = SPARKLINE_HEIGHT }: {
   buckets: PingOverviewBucket[];
   name: string;
   color: string;
   redrawKey: string;
+  onOpen: () => void;
+  height?: number;
 }) {
   const [inspect, setInspect] = useState<PingInspection | null>(null);
   // Rolling buckets change their time bounds; never silently inspect another period.
@@ -21,7 +23,7 @@ export const PingSparkline = memo(function PingSparkline({ buckets, name, color,
   const paintedWidth = useRef(0);
   // Normalize once per data update; resize and inspection reuse the same points.
   const geometry = useMemo(() => {
-    const points = buildPingSparklinePoints(buckets, 1, SPARKLINE_HEIGHT);
+    const points = buildPingSparklinePoints(buckets, 1, height);
     return {
       points,
       hasSamples: points.some((point) => point.y != null),
@@ -30,7 +32,7 @@ export const PingSparkline = memo(function PingSparkline({ buckets, name, color,
       lossMarks: buckets.flatMap((bucket, index) => bucket.total > 0 && bucket.loss != null && bucket.loss > 0
         ? [{ x: points[index].x, alpha: Math.max(0.35, Math.min(1, bucket.loss / 100)) }] : []),
     };
-  }, [buckets]);
+  }, [buckets, height]);
   const palette = useMemo(() => {
     void redrawKey;
     return {
@@ -133,6 +135,7 @@ export const PingSparkline = memo(function PingSparkline({ buckets, name, color,
     <span
       ref={host}
       className="ping-sparkline"
+      style={{ height }}
       role="slider"
       tabIndex={buckets.length ? 0 : -1}
       aria-label={`${name} 每时段延迟`}
@@ -140,13 +143,15 @@ export const PingSparkline = memo(function PingSparkline({ buckets, name, color,
       aria-valuemax={Math.max(0, buckets.length - 1)}
       aria-valuenow={activeIndex ?? Math.max(0, buckets.length - 1)}
       aria-valuetext={tooltip ?? "延迟历史"}
+      aria-haspopup="dialog"
       onPointerMove={(event) => {
         if (event.pointerType === "mouse" && !activeInspection?.sticky) inspectPointer(event, false);
       }}
       onPointerDown={(event) => inspectPointer(event, true)}
       onPointerLeave={() => setInspect((current) => currentPingInspection(buckets, current)?.sticky ? current : null)}
-      onClick={(event) => event.stopPropagation()}
+      onClick={(event) => { event.stopPropagation(); onOpen(); }}
       onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onOpen(); return; }
         if (event.key === "Escape") { event.stopPropagation(); setInspect(null); return; }
         if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || !buckets.length) return;
         event.preventDefault();
@@ -158,7 +163,7 @@ export const PingSparkline = memo(function PingSparkline({ buckets, name, color,
       }}
       onBlur={() => setInspect(null)}
     >
-      <CanvasStrip className="ping-sparkline-canvas" height={SPARKLINE_HEIGHT} redrawKey={redrawKey} draw={draw} />
+      <CanvasStrip className="ping-sparkline-canvas" height={height} redrawKey={redrawKey} draw={draw} />
       <HealthBucketTooltip text={tooltip} index={activeIndex} count={buckets.length} />
     </span>
   );

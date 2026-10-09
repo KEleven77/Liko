@@ -6,6 +6,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { listenForOutsideDismiss } from "@/utils/outsideDismiss";
 import { useNavigate } from "react-router-dom";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,19 +52,19 @@ export function InstanceSwitcher({ currentUuid }: { currentUuid: string }) {
 
   useEffect(() => {
     if (!open) return;
-    const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
+    const stopOutsideDismiss = listenForOutsideDismiss({
+      isInside: (target) => target instanceof Node && Boolean(rootRef.current?.contains(target)),
+      onDismiss: () => setOpen(false),
+    });
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpen(false);
         triggerRef.current?.focus();
       }
     };
-    document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("mousedown", onPointerDown);
+      stopOutsideDismiss();
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);

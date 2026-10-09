@@ -270,6 +270,7 @@ const ChartCard = memo(function ChartCard({
   axisKind,
   axisSize,
   xRange,
+  height,
 }: {
   icon: ReactNode;
   title: string;
@@ -286,8 +287,10 @@ const ChartCard = memo(function ChartCard({
   axisKind: "percent" | "network" | "count";
   axisSize?: number;
   xRange?: [number, number] | null;
+  height?: number;
 }) {
-  const { w, h, ref: chartSizeRef } = useResponsiveChartSize("grid");
+  const { w, h: measuredHeight, ref: chartSizeRef } = useResponsiveChartSize("grid");
+  const h = height ?? measuredHeight;
   const dataRef = useRef<uPlot.AlignedData>([[]]);
   const [tooltip, setTooltip] = useState<ChartTooltipState>({
     show: false,
@@ -381,10 +384,14 @@ export function LoadChart({
   uuid,
   hours,
   active = true,
+  resourceOnly = false,
+  rangeControls,
 }: {
   uuid: string;
   hours: number;
   active?: boolean;
+  resourceOnly?: boolean;
+  rangeControls?: ReactNode;
 }) {
   const queryHours = hours === 0 ? 1 : hours;
   const { data, isError, isFetching, isLoading, refetch } = useLoadRecords(
@@ -525,9 +532,10 @@ export function LoadChart({
 
   return (
     <InstancePanel
-      title="负载图表"
+      title="资源历史趋势"
       aside={
         <div className="instance-chart-headmeta">
+          {rangeControls}
           <div className="instance-chart-meta" aria-label="图表数据范围">
             <span title={coverageSummary}>
               <strong>{coverageLabel ?? `覆盖 ${coverageSummary}`}</strong>
@@ -559,6 +567,7 @@ export function LoadChart({
       <div className="instance-chart-grid">
         <ChartCard
           icon={<Cpu size={13} />}
+          height={resourceOnly ? 220 : undefined}
           title="CPU"
           uuid={uuid}
           value={
@@ -579,6 +588,7 @@ export function LoadChart({
         />
         <ChartCard
           icon={<MemoryStick size={13} />}
+          height={resourceOnly ? 220 : undefined}
           title="内存"
           uuid={uuid}
           value={
@@ -609,6 +619,7 @@ export function LoadChart({
         />
         <ChartCard
           icon={<HardDrive size={13} />}
+          height={resourceOnly ? 220 : undefined}
           title="磁盘"
           uuid={uuid}
           value={
@@ -629,7 +640,7 @@ export function LoadChart({
           axisKind="percent"
           xRange={requestedXRange}
         />
-        <ChartCard
+        {!resourceOnly && <ChartCard
           icon={<Network size={13} />}
           title="网络"
           uuid={uuid}
@@ -655,9 +666,10 @@ export function LoadChart({
           axisKind="network"
           axisSize={78}
           xRange={requestedXRange}
-        />
+        />}
         <ChartCard
           icon={<Workflow size={13} />}
+          height={resourceOnly ? 220 : undefined}
           title="连接数"
           uuid={uuid}
           value={
@@ -677,7 +689,7 @@ export function LoadChart({
           axisKind="count"
           xRange={requestedXRange}
         />
-        <ChartCard
+        {!resourceOnly && <ChartCard
           icon={<Gauge size={13} />}
           title="进程"
           uuid={uuid}
@@ -703,7 +715,7 @@ export function LoadChart({
           spanGaps={connectNulls}
           axisKind="count"
           xRange={requestedXRange}
-        />
+        />}
       </div>
     </InstancePanel>
   );

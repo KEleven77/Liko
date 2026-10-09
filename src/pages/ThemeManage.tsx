@@ -1538,7 +1538,7 @@ export function ThemeManage() {
                           aria-pressed={draft.homepagePingDisplayMode === mode}
                           onClick={() => patch("homepagePingDisplayMode", mode)}
                         >
-                          {mode === "bars" ? "双栏指标条" : "三网 Sparkline"}
+                          {mode === "bars" ? "指标条" : "Sparkline"}
                         </button>
                       ))}
                     </div>

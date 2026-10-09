@@ -106,12 +106,14 @@ export function PingChart({
   hours,
   active = true,
   networkDialog = false,
+  detailPage = false,
   rangeControls,
 }: {
   uuid: string;
   hours: number;
   active?: boolean;
   networkDialog?: boolean;
+  detailPage?: boolean;
   rangeControls?: ReactNode;
 }) {
   const {
@@ -443,13 +445,23 @@ export function PingChart({
         lost,
         loss,
         color: taskColors.get(task.id) ?? colorForSeries(index, tasks.length),
+        lastUpdated: records.length ? toChartSeconds(records[records.length - 1].time) * 1000 : null,
+        completeness: task.interval > 0 ? Math.min(100, total / Math.max(1, hours * 3600 / task.interval) * 100) : null,
       };
     });
-  }, [pingStats, sortedRecords, taskColors, tasks, uuid]);
+  }, [pingStats, sortedRecords, taskColors, tasks, uuid, hours]);
 
   const refetchAll = () => {
     void refetchRecords();
   };
+
+  const selectedStats = taskStats.filter((task) => !hiddenTasks.has(task.id));
+  const sampleTotal = selectedStats.reduce((sum, task) => sum + task.total, 0);
+  const sampleLost = selectedStats.reduce((sum, task) => sum + task.lost, 0);
+  const validTotal = selectedStats.reduce((sum, task) => sum + (task.avg == null ? 0 : Math.max(0, task.total - task.lost)), 0);
+  const averageLatency = validTotal > 0 ? selectedStats.reduce((sum, task) => sum + (task.avg ?? 0) * Math.max(0, task.total - task.lost), 0) / validTotal : null;
+  const averageLoss = sampleTotal > 0 ? sampleLost / sampleTotal * 100 : null;
+  const bestTask = selectedStats.filter((task) => task.total > 0 && task.latest != null && task.lastUpdated != null && Date.now() - task.lastUpdated < Math.max(300_000, task.interval * 3000)).sort((a, b) => a.loss - b.loss || (a.latest ?? Infinity) - (b.latest ?? Infinity))[0];
 
   const toggleTask = (taskId: number) => {
     setHiddenTasks((prev) => {
@@ -464,13 +476,15 @@ export function PingChart({
     setHiddenTasks((prev) => (prev.size === 0 ? new Set(tasks.map((task) => task.id)) : new Set()));
   };
 
-  if (isLoading && !networkDialog) {
+  if (isLoading && !networkDialog && !detailPage) {
     return <InstanceChartLoading title="Ping 图表" />;
   }
 
   if (isLoading || !data?.records.length) {
     return (
-      <InstancePanel title="Ping 图表" className={networkDialog ? "network-ping-panel" : undefined}>
+      <>
+      {detailPage && <InstancePanel title="探测任务总览" description={isLoading ? "正在加载探测任务" : "暂无探测数据"} aside={<button type="button" className="instance-toggle-button" disabled>全部任务</button>}><div className="instance-detail-network-summary">{["探测任务", "平均延迟", "丢包率", "可用率"].map((label) => <div key={label}><span>{label}</span><strong>—</strong></div>)}</div></InstancePanel>}
+      <InstancePanel title={detailPage ? "全线路延迟" : "Ping 图表"} aside={detailPage ? rangeControls : undefined} className={networkDialog ? "network-ping-panel" : undefined}>
         {networkDialog && <div className="network-ping-controls">{rangeControls}</div>}
         <div className="instance-empty" aria-busy={isLoading}>
           <span>{isLoading ? "加载中…" : isError ? "延迟历史加载失败" : "暂无延迟记录"}</span>
@@ -485,11 +499,24 @@ export function PingChart({
           </button>}
         </div>
       </InstancePanel>
+      </>
     );
   }
 
   return (
-    <InstancePanel title="Ping 图表" description={coverageLabel ?? undefined} className={networkDialog ? "network-ping-panel" : undefined}>
+    <>
+    {detailPage && <InstancePanel title="探测任务总览" description={`已选择 ${visibleTasks.length} / ${tasks.length} 个任务`} aside={<button type="button" className="instance-toggle-button" aria-pressed={visibleTasks.length === tasks.length} onClick={toggleAll}>全部任务</button>}>
+      <div className="instance-detail-task-chips" role="group" aria-label="探测任务选择">
+        {taskStats.map((task) => <button key={task.id} type="button" aria-pressed={!hiddenTasks.has(task.id)} onClick={() => toggleTask(task.id)}><span style={{ background: task.color }} aria-hidden />{taskLabels.get(task.id) ?? `任务 #${task.id}`}</button>)}
+      </div>
+      <div className="instance-detail-network-summary">
+        <div><span>探测任务</span><strong>{visibleTasks.length}<small> / {tasks.length}</small></strong></div>
+        <div><span>平均延迟</span><strong>{averageLatency == null ? "—" : averageLatency.toFixed(2)}<small> ms</small></strong></div>
+        <div><span>丢包率</span><strong>{averageLoss == null ? "—" : `${averageLoss.toFixed(2)}%`}</strong></div>
+        <div><span>可用率</span><strong>{averageLoss == null ? "—" : `${(100 - averageLoss).toFixed(2)}%`}</strong></div>
+      </div>
+    </InstancePanel>}
+    <InstancePanel title={detailPage ? "全线路延迟" : "Ping 图表"} description={coverageLabel ?? undefined} aside={detailPage ? rangeControls : undefined} className={networkDialog ? "network-ping-panel" : undefined}>
       {networkDialog && <div className="network-ping-controls">
         {rangeControls}
         <div className="network-ping-selection">
@@ -510,7 +537,7 @@ export function PingChart({
           onToggle={() => setConnectNulls((value) => !value)}
           title="关闭：如实显示中断/丢包断点；开启：跨过所有空缺连成完整曲线（更好看，但看不出掉线）。注：偶尔漏一两次采样的小空缺始终自动桥接，不受此开关影响。"
         />
-        {!networkDialog && <button type="button" className="instance-toggle-button" onClick={toggleAll}>
+        {!networkDialog && !detailPage && <button type="button" className="instance-toggle-button" onClick={toggleAll}>
           {hiddenTasks.size === 0 ? <EyeOff size={14} aria-hidden /> : <Eye size={14} aria-hidden />}
           {hiddenTasks.size === 0 ? "隐藏全部" : "显示全部"}
         </button>}
@@ -526,7 +553,7 @@ export function PingChart({
         </button>
       </div>
 
-      <div className="instance-ping-tasks">
+      {!detailPage && <div className="instance-ping-tasks">
         {taskStats.map((task) => {
           const visible = !hiddenTasks.has(task.id);
           return (
@@ -582,7 +609,7 @@ export function PingChart({
             </button>
           );
         })}
-      </div>
+      </div>}
 
       <div ref={chartSizeRef} className="instance-uplot-wrap is-large">
         {chart && options && visibleTasks.length > 0 ? (
@@ -598,7 +625,7 @@ export function PingChart({
           <div className="instance-empty">当前已隐藏全部线路，点击上方按钮可恢复显示</div>
         )}
       </div>
-      {networkDialog && <div className="network-ping-legend" role="group" aria-label="网络曲线图例">
+      {(networkDialog || detailPage) && <div className="network-ping-legend" role="group" aria-label="网络曲线图例">
         {taskStats.map((task) => {
           const visible = !hiddenTasks.has(task.id);
           const label = taskLabels.get(task.id) ?? `任务 #${task.id}`;
@@ -611,5 +638,18 @@ export function PingChart({
         })}
       </div>}
     </InstancePanel>
+    {detailPage && <InstancePanel title="监测节点" description="各探测任务的实时状态与采样情况">
+      <div className="instance-detail-table-scroll"><table className="instance-detail-network-table"><thead><tr><th>探测任务</th><th>当前延迟</th><th>平均延迟</th><th>丢包率</th><th>采样完整度</th><th>最近更新</th></tr></thead><tbody>{selectedStats.map((task) => <tr key={task.id}><th><span style={{ background: task.color }} aria-hidden />{taskLabels.get(task.id) ?? `任务 #${task.id}`}</th><td>{task.latest == null ? "—" : `${task.latest.toFixed(2)} ms`}</td><td>{task.avg == null ? "—" : `${task.avg.toFixed(2)} ms`}</td><td>{task.total ? `${task.loss.toFixed(2)}%` : "—"}</td><td>{task.completeness == null ? "—" : `${task.completeness.toFixed(1)}%`}</td><td>{task.lastUpdated == null ? "—" : new Date(task.lastUpdated).toLocaleTimeString("zh-CN")}</td></tr>)}</tbody></table>{!selectedStats.length && <div className="instance-empty">未选择探测任务</div>}</div>
+      <div className="instance-detail-network-mobile">{selectedStats.map((task) => <div key={task.id}><strong>{taskLabels.get(task.id) ?? `任务 #${task.id}`}</strong><small>{task.lastUpdated == null ? "—" : new Date(task.lastUpdated).toLocaleTimeString("zh-CN")}</small><span>当前延迟<b>{task.latest == null ? "—" : `${task.latest.toFixed(2)} ms`}</b></span><span>平均延迟<b>{task.avg == null ? "—" : `${task.avg.toFixed(2)} ms`}</b></span><span>丢包率<b>{task.total ? `${task.loss.toFixed(2)}%` : "—"}</b></span><span>采样完整度<b>{task.completeness == null ? "—" : `${task.completeness.toFixed(1)}%`}</b></span></div>)}</div>
+    </InstancePanel>}
+    {detailPage && <InstancePanel title="线路摘要" description="优先比较丢包率，其次比较当前延迟">
+      <div className="instance-detail-network-summary">{[
+        ["最佳任务", bestTask ? taskLabels.get(bestTask.id) ?? `任务 #${bestTask.id}` : "—"],
+        ["可用率", bestTask ? `${(100 - bestTask.loss).toFixed(2)}%` : "—"],
+        ["采样窗口", `${hours} 小时 / ${bestTask?.total ?? "—"}`],
+        ["线路状态", bestTask ? "可用" : "暂无状态"],
+      ].map(([label, value]) => <div key={label}><span>{label}</span><strong className="instance-detail-route-value">{value}</strong></div>)}</div>
+    </InstancePanel>}
+    </>
   );
 }

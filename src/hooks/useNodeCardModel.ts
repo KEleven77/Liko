@@ -28,7 +28,7 @@ import {
   lossHeatColor,
   trafficUsageColor,
 } from "@/utils/metricTone";
-import { resolveTrafficUsage, trafficTypeLabel, type TrafficDisplay } from "@/utils/traffic";
+import { formatTrafficResetLabel, resolveTrafficUsage, trafficTypeLabel, type TrafficDisplay } from "@/utils/traffic";
 import { resolveOsInfo } from "@/components/ui/OsLogo";
 import {
   hasHomepagePingTaskBinding,
@@ -40,6 +40,7 @@ const EMPTY_PING_TASK_IDS: number[] = [];
 interface NodeCardModelOptions {
   pingBucketCount?: number;
   includeMultiPing?: boolean;
+  multiPingLimit?: number;
 }
 
 export function shouldRenderHomepagePingBars(
@@ -54,6 +55,7 @@ export function useNodeCardModel(
   {
     pingBucketCount,
     includeMultiPing = false,
+    multiPingLimit,
   }: NodeCardModelOptions = {},
 ) {
   const { meta, metrics, trafficTrend } = useNodeCardSnapshots(uuid);
@@ -74,6 +76,7 @@ export function useNodeCardModel(
     enabled: isPriceVisible && cardCurrency !== "original" && !!meta && meta.price > 0,
     staleTime: 60 * 60 * 1000,
     retry: 1,
+    notifyOnChangeProps: ["data"],
   });
   const rates = rateQuery.data?.rates;
   const multiPingConfigured =
@@ -135,8 +138,10 @@ export function useNodeCardModel(
     ) {
       return [];
     }
-    return nodePingTaskIds.map((taskId) => {
-      const loaded = realPingLines.find((line) => line.taskId === taskId);
+    const linesByTask = new Map(realPingLines.map((line) => [line.taskId, line]));
+    const visibleTaskIds = multiPingLimit == null ? nodePingTaskIds : nodePingTaskIds.slice(0, multiPingLimit);
+    return visibleTaskIds.map((taskId) => {
+      const loaded = linesByTask.get(taskId);
       const line: HomepagePingLine =
         loaded ?? {
           taskId,
@@ -158,6 +163,7 @@ export function useNodeCardModel(
     bucketNow,
     nodePingTaskIds,
     multiPingActive,
+    multiPingLimit,
     pingBucketCount,
     realPingLines,
     uuid,
@@ -192,6 +198,7 @@ export function useNodeCardModel(
       compactFooterTags,
       subtitle: joinDisplayParts(subtitleParts),
       expire: formatExpireDays(meta.expired_at, now),
+      trafficResetLabel: formatTrafficResetLabel(meta.traffic_reset_at, now),
       expireColor: getExpireTextColor(meta.expired_at, now),
       isPriceVisible,
       renewalPrice: isPriceVisible ? formatRenewalPrice(billingMeta) : null,

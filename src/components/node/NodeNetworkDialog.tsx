@@ -56,9 +56,13 @@ export function NodeNetworkDialog({ uuid, name, onClose }: { uuid: string; name:
   return createPortal(
     <dialog ref={ref} className="node-network-dialog" aria-label={`${name} 网络`} onCancel={onClose}
       onClick={(event) => {
+        event.stopPropagation();
         if (event.target !== event.currentTarget) return;
         const rect = event.currentTarget.getBoundingClientRect();
-        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) {
+          event.preventDefault();
+          onClose();
+        }
       }}>
       <header className="node-network-dialog-header">
         <div><h2>{name} 延迟 / 丢包</h2><p>探测任务延迟、丢包率与波动统计</p></div>

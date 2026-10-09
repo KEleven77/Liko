@@ -17,6 +17,7 @@ import {
 } from "@/hooks/useTodayTrafficStats";
 import { useFineHover } from "@/hooks/useMediaQuery";
 import { formatBytes, formatByteRateLabel, formatClockTime } from "@/utils/format";
+import { listenForOutsideDismiss } from "@/utils/outsideDismiss";
 import {
   consumeTriggerFocusSuppression,
   INITIAL_NODE_TODAY_TRAFFIC_POPOVER_STATE,
@@ -178,16 +179,11 @@ export function NodeTodayTrafficPopover({
       focusPopoverOnOpenRef.current = false;
       dispatch({ type: "close-all" });
     };
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (
-        target &&
-        (triggerRef.current?.contains(target) || popoverRef.current?.contains(target))
-      ) {
-        return;
-      }
-      handleClose();
-    };
+    const stopOutsideDismiss = listenForOutsideDismiss({
+      isInside: (target) => target instanceof Node && Boolean(triggerRef.current?.contains(target) || popoverRef.current?.contains(target)),
+      onOutsidePress: cancelClose,
+      onDismiss: handleClose,
+    });
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       const restoreTriggerFocus = popoverRef.current?.contains(document.activeElement);
@@ -206,12 +202,11 @@ export function NodeTodayTrafficPopover({
     };
     window.addEventListener("resize", handleClose);
     window.addEventListener("scroll", handleClose, { capture: true, passive: true });
-    document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("resize", handleClose);
       window.removeEventListener("scroll", handleClose, { capture: true });
-      document.removeEventListener("pointerdown", handlePointerDown);
+      stopOutsideDismiss();
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [cancelClose, open]);

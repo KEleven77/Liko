@@ -12,6 +12,8 @@ function dateAfter(days: number) {
 const nodes: NodeInfo[] = [
   {
     uuid: "tokyo-edge-01",
+    bandwidth: "1 Gbps",
+    traffic_reset_at: dateAfter(12),
     name: "Tokyo Edge",
     group: "生产",
     region: "JP",
@@ -27,11 +29,11 @@ const nodes: NodeInfo[] = [
     swap_total: 2 * GIB,
     disk_total: 160 * GIB,
     weight: 10,
-    price: 48,
-    billing_cycle: "month",
+    price: 288,
+    billing_cycle: "year",
     auto_renewal: true,
     currency: "CNY",
-    expired_at: dateAfter(24),
+    expired_at: dateAfter(362),
     tags: "边缘<Cyan>; 高带宽<Teal>; 优选<Ruby>",
     public_remark: "东京入口与静态资源",
     traffic_limit: 4 * TIB,
@@ -43,6 +45,8 @@ const nodes: NodeInfo[] = [
   },
   {
     uuid: "singapore-api-01",
+    bandwidth: "500 Mbps",
+    traffic_reset_at: dateAfter(18),
     name: "Singapore API",
     group: "生产",
     region: "SG",
@@ -74,6 +78,8 @@ const nodes: NodeInfo[] = [
   },
   {
     uuid: "frankfurt-db-01",
+    bandwidth: "1 Gbps",
+    traffic_reset_at: dateAfter(3),
     name: "Frankfurt DB",
     group: "生产",
     region: "DE",
@@ -105,6 +111,8 @@ const nodes: NodeInfo[] = [
   },
   {
     uuid: "new-york-worker-01",
+    bandwidth: "2 Gbps",
+    traffic_reset_at: dateAfter(24),
     name: "New York Worker",
     group: "生产",
     region: "US",
@@ -136,6 +144,8 @@ const nodes: NodeInfo[] = [
   },
   {
     uuid: "hong-kong-cache-01",
+    bandwidth: "1 Gbps",
+    traffic_reset_at: dateAfter(29),
     name: "Hong Kong Cache",
     group: "边缘",
     region: "HK",
@@ -151,12 +161,12 @@ const nodes: NodeInfo[] = [
     swap_total: 2 * GIB,
     disk_total: 120 * GIB,
     weight: 50,
-    price: 68,
-    billing_cycle: "quarter",
+    price: 1234.56,
+    billing_cycle: "year",
     auto_renewal: true,
     currency: "CNY",
-    expired_at: dateAfter(61),
-    tags: "缓存<Gold>; 极速<Mint>; BGP<Plum>; 亚太<Iris>",
+    expired_at: dateAfter(1234),
+    tags: "缓存<Gold>; 极速<Mint>; BGP<Plum>; 亚太<Iris>; 三网优化<Mint>; 备用<Gold>",
     public_remark: "香港缓存层",
     traffic_limit: 3 * TIB,
     traffic_limit_type: "sum",
@@ -167,6 +177,8 @@ const nodes: NodeInfo[] = [
   },
   {
     uuid: "sydney-backup-01",
+    bandwidth: "200 Mbps",
+    traffic_reset_at: dateAfter(19),
     name: "Sydney Backup",
     group: "备份",
     region: "AU",
@@ -444,6 +456,10 @@ const pingTasks = [
   { id: 2, name: "中国联通", target: "联通探针" },
   { id: 3, name: "中国移动", target: "移动探针" },
   { id: 4, name: "Cloudflare DNS", target: "1.1.1.1" },
+  { id: 5, name: "电信备线", target: "119.29.29.29" },
+  { id: 6, name: "福建电信V6", target: "240e:4c:4008::1" },
+  { id: 7, name: "福建联通V6", target: "2408:8000::1" },
+  { id: 8, name: "福建移动V6", target: "2409:8080::1" },
 ].map((task, index) => ({
   ...task,
   interval: 60,
@@ -548,7 +564,8 @@ export function installDevMockApi() {
         metric_retention_days: 90,
         custom_head: "",
         custom_body: "",
-        theme_settings: savedThemeSettings[theme] ?? {
+        theme_settings: {
+          ...(savedThemeSettings[theme] ?? {
           desktopNodeViewMode: "compact",
           mobileNodeViewMode: "compact",
           showHomeOverview: true,
@@ -576,6 +593,14 @@ export function installDevMockApi() {
                   "singapore-api-01": [1, 2, 3, 4],
                 }
               : {},
+          }),
+          ...(previewParams.get("morePing") === "1" ? {
+            homepagePingTaskIdsByClient: {
+              ...((savedThemeSettings[theme]?.homepagePingTaskIdsByClient ?? {}) as Record<string, number[]>),
+              "hong-kong-cache-01": [1, 2, 3, 4, 5, 6, 7, 8],
+              "sydney-backup-01": [],
+            },
+          } : {}),
         },
       });
     }

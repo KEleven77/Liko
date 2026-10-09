@@ -19,11 +19,13 @@ const PingLineRow = memo(function PingLineRow({
   density,
   redrawKey,
   onOpen,
+  sparkline,
 }: {
   line: HomepagePingDisplayLine;
   density: MultiPingStatusDensity;
   redrawKey: string;
   onOpen: () => void;
+  sparkline: boolean;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [hoveredMetric, setHoveredMetric] = useState<"latency" | "loss" | null>(null);
@@ -78,7 +80,7 @@ const PingLineRow = memo(function PingLineRow({
       </div>
       <span className="multi-ping-buckets">
         <span className="multi-ping-history-line" title="延迟历史">
-          <LatencyBars
+          {sparkline ? <PingSparkline buckets={line.buckets} name={line.taskName} color={line.lastValue == null ? "var(--text-tertiary)" : latencyHeatColor(line.lastValue)} redrawKey={redrawKey} onOpen={onOpen} height={density === "compact" ? 6 : 7} /> : <LatencyBars
             buckets={line.buckets}
             redrawKey={redrawKey}
             height={density === "compact" ? 6 : 7}
@@ -86,8 +88,8 @@ const PingLineRow = memo(function PingLineRow({
               setHoveredMetric(index == null ? null : "latency");
               setHoveredIndex(index);
             }}
-          />
-          <HealthBucketTooltip text={hoveredMetric === "latency" ? tooltip : null} index={hoveredIndex} count={line.buckets.length} />
+          />}
+          {!sparkline && <HealthBucketTooltip text={hoveredMetric === "latency" ? tooltip : null} index={hoveredIndex} count={line.buckets.length} />}
         </span>
         <span className="multi-ping-history-separator" aria-hidden="true">|</span>
         <span className="multi-ping-history-line" title="丢包率历史">
@@ -107,11 +109,15 @@ const PingLineRow = memo(function PingLineRow({
   );
 });
 
-const SparklineRow = memo(function SparklineRow({ line, redrawKey, onOpen }: {
+const TablePingRow = memo(function TablePingRow({ line, redrawKey, onOpen, sparkline }: {
   line: HomepagePingDisplayLine;
   redrawKey: string;
   onOpen: () => void;
+  sparkline: boolean;
 }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const hoveredBucket = hoveredIndex == null ? null : line.buckets[hoveredIndex];
+  const tooltip = hoveredBucket ? formatCombinedPingBucketTooltip(hoveredBucket) : null;
   const emptyLabel = line.loadState === "pending" ? "加载中"
     : line.loadState === "error" ? "加载失败" : "无样本";
   const latencyColor = line.lastValue == null ? "var(--text-tertiary)" : latencyHeatColor(line.lastValue);
@@ -128,12 +134,16 @@ const SparklineRow = memo(function SparklineRow({ line, redrawKey, onOpen }: {
         title={`${line.taskName}${stale ? " · 刷新失败，显示上次数据" : ""}`}
       >
         <span className="multi-ping-name">{line.taskName}</span>
-        <strong className="multi-ping-value tabular" style={{ color: latencyColor }}>
-          {line.lastValue == null ? emptyLabel : Math.round(line.lastValue)}
-          {line.lastValue != null && <small>ms</small>}
-        </strong>
       </button>
-      <PingSparkline buckets={line.buckets} name={line.taskName} color={latencyColor} redrawKey={redrawKey} />
+      {!sparkline ? (
+        <button type="button" className="multi-ping-table-history" onClick={open} aria-haspopup="dialog" aria-label={`${line.taskName} 延迟历史，查看网络详情`}>
+          <LatencyBars buckets={line.buckets} redrawKey={redrawKey} height={6} onHoverIndex={setHoveredIndex} />
+          <HealthBucketTooltip text={tooltip} index={hoveredIndex} count={line.buckets.length} />
+        </button>
+      ) : <PingSparkline buckets={line.buckets} name={line.taskName} color={latencyColor} redrawKey={redrawKey} onOpen={onOpen} />}
+      <button type="button" className="multi-ping-table-latency" onClick={open} aria-haspopup="dialog" aria-label={`${line.taskName} 延迟，查看网络详情`}>
+        <strong className="multi-ping-value tabular" style={{color: latencyColor}}>{line.lastValue == null ? emptyLabel : line.lastValue.toFixed(2)}{line.lastValue != null && <small>ms</small>}</strong>
+      </button>
       <button
         type="button"
         className="multi-ping-sparkline-loss multi-ping-loss tabular"
@@ -154,12 +164,14 @@ export const MultiPingStatus = memo(function MultiPingStatus({
   lines,
   density,
   className,
+  layout,
 }: {
   uuid: string;
   name: string;
   lines: HomepagePingDisplayLine[];
   density: MultiPingStatusDensity;
   className?: string;
+  layout?: "table";
 }) {
   const { resolvedAppearance } = usePreferences();
   const { homepagePingDisplayMode } = useThemeSettings();
@@ -172,14 +184,15 @@ export const MultiPingStatus = memo(function MultiPingStatus({
   return (
     <>
     <div
-      className={clsx("multi-ping-status", `is-${density}`, homepagePingDisplayMode === "sparkline" && "is-sparkline", className)}
+      className={clsx("multi-ping-status", `is-${density}`, layout === "table" && "is-sparkline", layout === "table" && "is-table", className)}
       role="group"
       aria-label="自定义线路延迟与丢包"
+      onClick={(event) => { event.stopPropagation(); openNetwork(); }}
     >
-      {lines.map((line) => (
-        homepagePingDisplayMode === "sparkline"
-          ? <SparklineRow key={line.taskId} line={line} redrawKey={redrawKey} onOpen={openNetwork} />
-          : <PingLineRow key={line.taskId} line={line} density={density} redrawKey={redrawKey} onOpen={openNetwork} />
+      {(layout === "table" ? lines.slice(0, 6) : lines).map((line) => (
+        layout === "table"
+          ? <TablePingRow key={line.taskId} line={line} redrawKey={redrawKey} onOpen={openNetwork} sparkline={homepagePingDisplayMode === "sparkline"} />
+          : <PingLineRow key={line.taskId} line={line} density={density} redrawKey={redrawKey} onOpen={openNetwork} sparkline={homepagePingDisplayMode === "sparkline"} />
       ))}
     </div>
     {networkOpen && <NodeNetworkDialog uuid={uuid} name={name} onClose={closeNetwork} />}

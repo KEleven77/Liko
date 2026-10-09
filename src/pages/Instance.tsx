@@ -1,8 +1,10 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
+import { Activity, ChevronLeft, LayoutGrid } from "lucide-react";
 import "uplot/dist/uPlot.min.css";
-import { InstanceDetails } from "@/components/instance/InstanceDetails";
+import { InstanceOverview } from "@/components/instance/InstanceOverview";
+import { InstanceSwitcher } from "@/components/instance/InstanceSwitcher";
+import { Flag } from "@/components/ui/Flag";
 import { PingChart } from "@/components/instance/PingChart";
 import { LoadChart } from "@/components/instance/LoadChart";
 import { Spinner } from "@/components/ui/Spinner";
@@ -11,7 +13,7 @@ import {
   buildPingTimeRangeOptions,
 } from "@/components/instance/chartShared";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
-import { useNodeMeta, useNodeStoreStatus } from "@/hooks/useNode";
+import { useNodeMeta, useNodeMetrics, useNodeStoreStatus } from "@/hooks/useNode";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 
 const DEFAULT_PING_HOURS = 4;
@@ -21,25 +23,24 @@ function RangeSelector({
   ranges,
   value,
   onChange,
+  label = "图表时间范围",
 }: {
   ranges: TimeRangeOption[];
   value: number;
   onChange: (value: number) => void;
+  label?: string;
 }) {
   return (
-    <div className="instance-segmented is-scrollable">
+    <select className="instance-detail-range" aria-label={label} value={value} onChange={(event) => onChange(Number(event.target.value))}>
       {ranges.map((range) => (
-        <button
+        <option
           key={range.value}
-          type="button"
-          data-active={value === range.value ? "true" : "false"}
-          aria-pressed={value === range.value}
-          onClick={() => onChange(range.value)}
+          value={range.value}
         >
           {range.label}
-        </button>
+        </option>
       ))}
-    </div>
+    </select>
   );
 }
 
@@ -48,11 +49,16 @@ export function Instance() {
   const { data: config } = usePublicConfig();
   const themeSettings = useThemeSettings();
   const meta = useNodeMeta(uuid ?? "");
+  const metrics = useNodeMetrics(uuid ?? "");
   const storeStatus = useNodeStoreStatus(Boolean(uuid));
   const [chartType, setChartType] = useState<"load" | "ping">("load");
   const [loadHours, setLoadHours] = useState(0);
+  const [trafficHours, setTrafficHours] = useState(1);
   const [pingHours, setPingHours] = useState(DEFAULT_PING_HOURS);
-  const chartControlsRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [uuid]);
 
   const metricRetentionHours =
     config?.metric_retention_days && config.metric_retention_days > 0
@@ -69,16 +75,11 @@ export function Instance() {
   );
   const showPingChart = themeSettings.isReady && themeSettings.showPingChart;
 
-  const alignCharts = useCallback(() => {
-    const frame = window.requestAnimationFrame(() => {
-      const element = chartControlsRef.current;
-      if (!element) return;
-      const rect = element.getBoundingClientRect();
-      if (rect.top >= 0 && rect.top < window.innerHeight) return;
-      element.scrollIntoView({ behavior: "auto", block: "start" });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
+  useEffect(() => {
+    if (!loadRanges.some((range) => range.value === trafficHours)) {
+      setTrafficHours(loadRanges[0]?.value ?? 0);
+    }
+  }, [trafficHours, loadRanges]);
 
   useEffect(() => {
     if (!loadRanges.some((range) => range.value === loadHours)) {
@@ -133,17 +134,22 @@ export function Instance() {
   }
 
   return (
-    <div className="flex flex-col gap-5 py-2">
+    <div className="instance-detail-page">
+      <header className="instance-detail-header">
       <Link
         to="/"
         className="instance-page-back"
       >
         <ChevronLeft size={14} />
-        返回
+        <span className="sr-only">返回首页</span>
       </Link>
-      <InstanceDetails uuid={uuid} onNodeReady={alignCharts} />
-      <div ref={chartControlsRef} className="instance-chart-controls">
-        <div className="instance-segmented">
+      <Flag region={meta.region} size={24} />
+      <div className="instance-detail-heading"><h1>{meta.name}</h1><span>{meta.os || "—"} · {meta.arch || "—"}{meta.bandwidth ? ` · ${meta.bandwidth}` : ""}</span></div>
+      <InstanceSwitcher currentUuid={uuid} />
+      <span className={`instance-detail-status${metrics?.online ? " is-online" : ""}`}>{metrics ? metrics.online ? "在线" : "离线" : "加载中"}</span>
+      </header>
+      <div className="instance-chart-controls">
+        <div className="instance-segmented instance-detail-tabs" role="group" aria-label="服务器详情视图">
           <button
             type="button"
             data-active={chartType === "load" ? "true" : "false"}
@@ -152,7 +158,7 @@ export function Instance() {
               startTransition(() => setChartType("load"));
             }}
           >
-            负载
+            <LayoutGrid size={18} aria-hidden />资源详情
           </button>
           {showPingChart && (
             <button
@@ -163,24 +169,10 @@ export function Instance() {
                 startTransition(() => setChartType("ping"));
               }}
             >
-              Ping
+              <Activity size={18} aria-hidden />网络监测
             </button>
           )}
         </div>
-        {chartType === "load" && (
-          <RangeSelector
-            ranges={loadRanges}
-            value={loadHours}
-            onChange={(value) => startTransition(() => setLoadHours(value))}
-          />
-        )}
-        {chartType === "ping" && showPingChart && (
-          <RangeSelector
-            ranges={pingRanges}
-            value={pingHours}
-            onChange={(value) => startTransition(() => setPingHours(value))}
-          />
-        )}
       </div>
       <div className="instance-chart-stage">
         <div
@@ -188,7 +180,8 @@ export function Instance() {
           hidden={chartType !== "load"}
           aria-hidden={chartType !== "load"}
         >
-          <LoadChart uuid={uuid} hours={loadHours} active={chartType === "load"} />
+          <InstanceOverview uuid={uuid} hours={trafficHours} active={chartType === "load"} rangeControls={<RangeSelector ranges={loadRanges} value={trafficHours} label="实时流量时间范围" onChange={(value) => startTransition(() => setTrafficHours(value))} />} />
+          <LoadChart uuid={uuid} hours={loadHours} active={chartType === "load"} resourceOnly rangeControls={<RangeSelector ranges={loadRanges} value={loadHours} label="历史趋势时间范围" onChange={(value) => startTransition(() => setLoadHours(value))} />} />
         </div>
         <div
           className="instance-chart-view"
@@ -200,6 +193,8 @@ export function Instance() {
               uuid={uuid}
               hours={pingHours}
               active={chartType === "ping"}
+              detailPage
+              rangeControls={<RangeSelector ranges={pingRanges} value={pingHours} label="网络监测时间范围" onChange={(value) => startTransition(() => setPingHours(value))} />}
             />
           ) : null}
         </div>

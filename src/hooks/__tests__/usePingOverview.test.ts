@@ -23,6 +23,40 @@ function aggregateSamples(intervalMinutes: number) {
 }
 
 describe("homepage ping metric interval adaptation", () => {
+  it("sorts unordered samples without mutating API records or mixing tasks and clients", () => {
+    const records = [
+      { task_id: 7, client: "a", time: "2026-07-17T10:06:00Z", value: 60 },
+      { task_id: 8, client: "a", time: "2026-07-17T10:08:00Z", value: 80 },
+      { task_id: 7, client: "b", time: "2026-07-17T10:04:00Z", value: 40 },
+      { task_id: 7, client: "a", time: "2026-07-17T10:02:00Z", value: 20 },
+      { task_id: 7, client: "a", time: "2026-07-17T10:04:00Z", value: -1 },
+    ];
+    const original = structuredClone(records);
+    const items = buildPingOverviewItems(7, records);
+    expect(items.get("a")?.samples.map((sample) => sample.value)).toEqual([20, -1, 60]);
+    expect(items.get("a")?.lastValue).toBe(60);
+    expect(items.get("a")?.loss).toBeCloseTo(100 / 3);
+    expect(items.get("b")?.lastValue).toBe(40);
+    expect(records).toEqual(original);
+    expect(buildPingOverviewItems(7, [...records].reverse())).toEqual(items);
+  });
+
+  it("projects coarse samples only into intersecting buckets, preserving midpoint boundaries", () => {
+    for (const count of [18, 20, 24, 240]) {
+      const bucketMs = 60 * MINUTE_MS / count;
+      const interval = 5 * MINUTE_MS;
+      const samples = [WINDOW_START - interval / 2, WINDOW_START + bucketMs / 2, NOW - interval / 2]
+        .map((time) => ({ time, value: 40 }));
+      const buckets = buildPingBuckets({ samples, metricIntervalMs: interval }, count, NOW);
+      buckets.forEach((bucket, index) => {
+        const midpoint = WINDOW_START + (index + 0.5) * bucketMs;
+        const expected = samples.filter((sample) => midpoint >= sample.time && midpoint < sample.time + interval).length;
+        expect(bucket.total).toBe(expected);
+        expect(bucket.value).toBe(expected ? 40 : null);
+      });
+    }
+  });
+
   it("propagates the metric API interval into the homepage item", () => {
     const items = buildPingOverviewItems(
       7,

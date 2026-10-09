@@ -61,6 +61,8 @@ export const NodeInfoSchema = z
     public_remark: looseString.default(""),
     traffic_limit: looseNumber.default(0),
     traffic_limit_type: looseString.default(""),
+    traffic_reset_at: z.string().nullish().catch(undefined),
+    bandwidth: looseString.optional(),
     ipv4: looseString.default(""),
     ipv6: looseString.default(""),
     created_at: looseString.default(""),

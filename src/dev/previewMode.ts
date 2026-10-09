@@ -1,5 +1,5 @@
 const PREVIEW_SESSION_KEY = "sao-dev-preview";
-const PREVIEW_OPTIONS = ["mock", "admin", "customPing", "multiPing"] as const;
+const PREVIEW_OPTIONS = ["mock", "admin", "customPing", "multiPing", "morePing"] as const;
 
 export function getDevPreviewParams(): URLSearchParams {
   const current = new URLSearchParams(window.location.search);

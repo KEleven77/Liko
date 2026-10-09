@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { listenForOutsideDismiss } from "@/utils/outsideDismiss";
 import { CalendarClock, X } from "lucide-react";
 import { usePriceVisibility } from "@/hooks/usePriceVisibility";
 import {
@@ -123,12 +124,16 @@ export function RenewalReminder({
 
   useEffect(() => {
     if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+    const stopOutsideDismiss = listenForOutsideDismiss({
+      isInside: (target) => target instanceof Node && Boolean(rootRef.current?.contains(target)),
+      onOutsidePress: () => {
+        if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+      },
+      onDismiss: () => {
         setOpen(false);
         onOpenChange?.(false);
-      }
-    };
+      },
+    });
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setOpen(false);
@@ -136,10 +141,9 @@ export function RenewalReminder({
       const focusable = triggerRef.current?.querySelector<HTMLElement>("a, button");
       (focusable ?? triggerRef.current)?.focus();
     };
-    document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
+      stopOutsideDismiss();
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [onOpenChange, open]);

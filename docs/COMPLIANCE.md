@@ -22,6 +22,15 @@
 
 ## 已采取措施
 
+### 2026-10-10 / 1.1.0 补充
+
+- 区分 SAO 直接代码上游、Lumina/LuminaPlus 历史继承来源，以及 Lite-theme 与 Glassmorphism 的本次设计/交互参考，不将第三方设计和基础代码全部归为 Liko 原创。
+- Lite-theme 参考版本为 1.2.7 (`ee210a1`)，其仓库 LICENSE 为 Apache-2.0，原文保存在 `public/licenses/lite-theme-Apache-2.0.txt`。借鉴范围包括首页卡片信息层次与配色、二级资源/网络监测页排列，按 Liko 的组件与接口适配；差异见 README 和 1.1.0 发布说明。
+- Glassmorphism 仓库 LICENSE 为 MIT，原文保存在 `public/licenses/glassmorphism-MIT.txt`。借鉴 Sparkline 历史展示与时段查看思路，使用既有 Canvas 实现，未复制其源码或素材。
+- 上述许可原文、来源与修改说明随本次 ZIP 保留；这不表示已完成整个项目的逐行授权或素材审查。原有 SAO/Lumina 及品牌素材核查缺口仍未被这些参考项目的许可证覆盖。
+
+### 原有措施
+
 - 在 README 明确个人二次开发、自用测试及 AI 开发方式，区分维护者与上游权利人。
 - 保留上游来源说明及 Git 历史，没有将所有上游版权替换为 Liko。
 - 移除会误导为整体 MIT 的徽章和失效 LICENSE 链接，不擅自补写缺失上游的版权年份或授权。

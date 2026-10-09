@@ -22,7 +22,7 @@ function axisRate(value: number) {
   return Number.isFinite(value) && value > 0 ? formatByteRateLabel(value) : "";
 }
 
-export function TrafficRateChart({ samples }: { samples: TodayTrafficSample[] }) {
+export function TrafficRateChart({ samples, hours = 24 }: { samples: TodayTrafficSample[]; hours?: number }) {
   const { resolvedAppearance } = usePreferences();
   const { w, ref: chartSizeRef } = useResponsiveChartSize("grid");
   const height = w < 560 ? 182 : 220;
@@ -47,7 +47,7 @@ export function TrafficRateChart({ samples }: { samples: TodayTrafficSample[] })
     () =>
       buildChartTooltipHooks({
         dataRef,
-        rangeHours: 24,
+        rangeHours: hours,
         estimatedWidth: 184,
         setTooltip,
         buildRows: (index) => [
@@ -63,7 +63,7 @@ export function TrafficRateChart({ samples }: { samples: TodayTrafficSample[] })
           },
         ],
       }),
-    [],
+    [hours],
   );
   // base options 只随断点/主题变化;宽度变化时嵌套引用保持稳定,uplot-react 才会走
   // setSize 而不是整图销毁重建(与 LoadChart/PingChart 同一模式)。
@@ -87,7 +87,7 @@ export function TrafficRateChart({ samples }: { samples: TodayTrafficSample[] })
           grid: { stroke: grid, width: 1 },
           ticks: { stroke: grid },
           size: 36,
-          values: createTimeAxisFormatter(24),
+          values: createTimeAxisFormatter(hours),
         },
         {
           stroke: text,
@@ -117,7 +117,7 @@ export function TrafficRateChart({ samples }: { samples: TodayTrafficSample[] })
         init: [
           (plot) => {
             plot.root.setAttribute("role", "img");
-            plot.root.setAttribute("aria-label", "本日网络上行与下行速率折线图");
+            plot.root.setAttribute("aria-label", "网络上行与下行速率折线图");
           },
           tooltipHooks.onInit,
         ],
@@ -125,7 +125,7 @@ export function TrafficRateChart({ samples }: { samples: TodayTrafficSample[] })
         setCursor: [tooltipHooks.onSetCursor],
       },
     };
-  }, [compact, resolvedAppearance, tooltipHooks]);
+  }, [compact, resolvedAppearance, tooltipHooks, hours]);
   const options = useMemo<uPlot.Options>(
     () => ({ ...baseOptions, width: w, height }) as uPlot.Options,
     [baseOptions, height, w],

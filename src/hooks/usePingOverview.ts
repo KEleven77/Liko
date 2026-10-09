@@ -173,15 +173,15 @@ export function buildPingOverviewItems(
     metricIntervalSeconds > 0
       ? metricIntervalSeconds * 1000
       : undefined;
-  const selectedRecords = records.filter((record) => record.task_id === taskId);
-  const grouped = new Map<string, Array<(typeof selectedRecords)[number]>>();
+  const grouped = new Map<string, Array<{ record: PingRecord; time: number }>>();
   const lossStatsByClient = new Map<string, { total: number; lost: number }>();
 
-  for (const record of selectedRecords) {
-    if (!record.client) continue;
+  for (const record of records) {
+    if (record.task_id !== taskId || !record.client) continue;
+    const sample = { record, time: toTimestamp(record.time) };
     const current = grouped.get(record.client);
-    if (current) current.push(record);
-    else grouped.set(record.client, [record]);
+    if (current) current.push(sample);
+    else grouped.set(record.client, [sample]);
 
     const stats = lossStatsByClient.get(record.client) ?? { total: 0, lost: 0 };
     const counts = resolvePingSampleCounts(record);
@@ -200,17 +200,16 @@ export function buildPingOverviewItems(
 
   for (const client of clients) {
     const clientRecords = grouped.get(client) ?? [];
-    const sorted = [...clientRecords].sort(
-      (left, right) => toTimestamp(left.time) - toTimestamp(right.time),
-    );
-    const latestRecord = sorted[sorted.length - 1];
+    // API records are usually chronological; sort only out-of-order responses.
+    if (clientRecords.some((sample, index) => index > 0 && sample.time < clientRecords[index - 1].time)) {
+      clientRecords.sort((left, right) => left.time - right.time);
+    }
+    const latestRecord = clientRecords[clientRecords.length - 1]?.record;
     const samples: PingOverviewItem["samples"] = [];
     let max = 1;
 
-    for (let i = 0; i < sorted.length; i++) {
-      const record = sorted[i];
+    for (const { record, time } of clientRecords) {
       const value = record.value;
-      const time = toTimestamp(record.time);
       if (time > 0) {
         samples.push({
           time,
@@ -1347,7 +1346,9 @@ export function buildPingBuckets(
       // 后端时间戳是聚合桶起点。以每个可视 bucket 的中点判断它属于哪个
       // 聚合区间，相当于对粗粒度数据做 sample-and-hold：不会制造规律性空洞，
       // 也不会因为减少 DOM 数量而让不同节点的柱宽不一致。
-      for (let index = 0; index < resolvedCount; index += 1) {
+      const firstIndex = Math.max(0, Math.floor((sample.time - windowStart) / bucketMs));
+      const endIndex = Math.min(resolvedCount, Math.ceil((sampleEnd - windowStart) / bucketMs));
+      for (let index = firstIndex; index < endIndex; index += 1) {
         const midpoint = windowStart + (index + 0.5) * bucketMs;
         if (midpoint >= sample.time && midpoint < sampleEnd) {
           addSampleToBucket(index, sample);

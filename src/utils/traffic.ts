@@ -7,6 +7,15 @@ export interface TrafficDisplay {
   typeLabel: string;
 }
 
+export function formatTrafficResetLabel(resetAt: string | null | undefined, now: number): string {
+  if (!resetAt || !Number.isFinite(now)) return "";
+  // Require the backend's timezone-qualified instant, not a browser-local date.
+  if (!/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(resetAt)) return "";
+  const timestamp = Date.parse(resetAt);
+  if (!Number.isFinite(timestamp) || timestamp <= now) return "";
+  return `${Math.ceil((timestamp - now) / 86_400_000)}天后重置`;
+}
+
 function nonNegative(value: number): number {
   return Number.isFinite(value) && value > 0 ? value : 0;
 }

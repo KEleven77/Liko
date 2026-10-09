@@ -10,7 +10,13 @@ Liko 是个人维护的二次开发分支，不代表上游项目官方版本。
 - [Circle Flags](https://github.com/HatScripts/circle-flags)：上游记载的旗帜素材来源，MIT 原文见 `public/licenses/circle-flags-MIT.txt`。
 - 系统品牌标识及历史预览图：继承自上游，逐项授权待核实。不表示相关品牌的认可或背书。
 
-## 运行时组件
+## 1.1.0 新增参考记录
+
+- [nuomiiiii/Lite-theme](https://github.com/nuomiiiii/Lite-theme)：参考 1.2.7 (`ee210a1`) 的服务器卡片信息层次、冷白/蓝黑配色和二级资源/网络监测页布局；由 Liko 按自身 React 组件和 API 适配。参考项目的 Apache-2.0 原文保存在 `public/licenses/lite-theme-Apache-2.0.txt`，随 `dist/licenses/` 发布。Liko 的相关适配和行为差异在 README 的 1.1.0 更新中注明，不替代参考项目的原版或官方版本。
+- [towersip/komari-theme-Glassmorphism](https://github.com/towersip/komari-theme-Glassmorphism)：参考 Sparkline 延迟历史展示和时段查看交互，未复制其源码或素材；用既有 Canvas 和历史数据模型实现。其 MIT 原文保存在 `public/licenses/glassmorphism-MIT.txt`，包括原版权声明，随包保留供来源核查。
+- SAO、Lumina、LuminaPlus 是已有继承链，不因本次参考关系而替换署名或整体重新授权。现有授权待核实事项仍保留在 `COMPLIANCE.md`。
+
+## 运行时依赖许可
 
 锁文件中的运行时包包含 React、React DOM、React Router、TanStack Query、clsx、cookie、scheduler、set-cookie-parser、uPlot、uplot-react、Zod、Lucide React 和 Inter 字体包。
 

@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { computeTrafficUsed, resolveTrafficUsage, trafficTypeLabel } from "@/utils/traffic";
+import { computeTrafficUsed, formatTrafficResetLabel, resolveTrafficUsage, trafficTypeLabel } from "@/utils/traffic";
+import { NodeInfoSchema } from "@/types/komari";
+
+describe("formatTrafficResetLabel", () => {
+  const now = Date.parse("2026-10-09T00:00:00Z");
+  it("uses the backend instant and rounds partial days up", () => {
+    expect(formatTrafficResetLabel("2026-10-12T00:00:00Z", now)).toBe("3天后重置");
+    expect(formatTrafficResetLabel("2026-10-10T08:00:00+08:00", now)).toBe("1天后重置");
+    expect(formatTrafficResetLabel("2026-10-09T00:01:00Z", now)).toBe("1天后重置");
+  });
+  it("does not invent a reset for missing, invalid or stale backend data", () => {
+    for (const value of [undefined, null, "", "invalid", "2026-10-12", "2026-10-12T00:00:00", "2026-10-09T00:00:00Z", "2026-10-08T00:00:00Z"]) {
+      expect(formatTrafficResetLabel(value, now)).toBe("");
+    }
+    expect(formatTrafficResetLabel("2026-10-12T00:00:00Z", NaN)).toBe("");
+  });
+  it("preserves the backend reset timestamp through node parsing", () => {
+    const node = NodeInfoSchema.parse({ uuid: "test", traffic_reset_at: "2026-10-12T00:00:00Z" });
+    expect(formatTrafficResetLabel(node.traffic_reset_at, now)).toBe("3天后重置");
+    expect(NodeInfoSchema.parse({ uuid: "test", traffic_reset_at: 42 }).traffic_reset_at).toBeUndefined();
+  });
+});
 
 describe("computeTrafficUsed", () => {
   it("reduces up/down per type", () => {

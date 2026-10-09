@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { listenForOutsideDismiss } from "@/utils/outsideDismiss";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import {
   HOME_SORT_FIELDS,
@@ -27,18 +28,18 @@ export function HomeSortControl({ state }: { state: HomeSortControlState }) {
 
   useEffect(() => {
     if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
+    const stopOutsideDismiss = listenForOutsideDismiss({
+      isInside: (target) => target instanceof Node && Boolean(rootRef.current?.contains(target)),
+      onDismiss: () => setOpen(false),
+    });
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setOpen(false);
       triggerRef.current?.focus();
     };
-    document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
+      stopOutsideDismiss();
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);

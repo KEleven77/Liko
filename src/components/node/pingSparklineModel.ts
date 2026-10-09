@@ -39,9 +39,10 @@ export function buildPingSparklinePoints(buckets: PingOverviewBucket[], width: n
   const padding = Math.max(5, (max - min) * 0.15);
   const floor = Math.max(0, min - padding);
   const ceiling = max + padding;
-  const plotHeight = Math.max(0, height - 8);
+  const inset = Math.min(3, Math.max(0, height / 6));
+  const plotHeight = Math.max(0, height - inset * 2 - 2);
   return values.map((value, index) => ({
     x: (index + 0.5) / values.length * width,
-    y: value == null ? null : 3 + (1 - (value - floor) / (ceiling - floor)) * plotHeight,
+    y: value == null ? null : inset + (1 - (value - floor) / (ceiling - floor)) * plotHeight,
   }));
 }

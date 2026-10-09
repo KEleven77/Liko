@@ -64,6 +64,8 @@ const entries = [
   { path: "preview.png", full: previewPath },
   { path: "THIRD_PARTY_NOTICES.md", full: resolve(root, "THIRD_PARTY_NOTICES.md") },
   { path: "COMPLIANCE.md", full: resolve(root, "docs/COMPLIANCE.md") },
+  { path: "README.md", full: resolve(root, "README.md") },
+  { path: "RELEASE_NOTES.md", full: resolve(root, `.github/release-notes/v${version}.md`) },
   ...walk(distDir, root),
 ];
 

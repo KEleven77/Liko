@@ -9,6 +9,15 @@ function bucket(value: number | null, total = 1): PingOverviewBucket {
 }
 
 describe("ping sparkline periods", () => {
+  it("preserves the trend in the unchanged compact indicator strip height", () => {
+    const points = buildPingSparklinePoints([bucket(10), bucket(30), bucket(50)], 100, 6);
+    expect(points[0].y).toBeGreaterThan(points[1].y!);
+    expect(points[1].y).toBeGreaterThan(points[2].y!);
+    points.forEach((point) => {
+      expect(point.y).toBeGreaterThanOrEqual(0);
+      expect(point.y).toBeLessThan(6);
+    });
+  });
   it("clears pinned inspection when the rolling window advances", () => {
     const buckets = [{ ...bucket(20), startAt: 0, endAt: 180_000 }];
     const inspection = createPingInspection(buckets, 0, true);

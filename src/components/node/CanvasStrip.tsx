@@ -7,6 +7,7 @@ import {
   type PointerEvent,
 } from "react";
 import { supportsFineHover } from "@/utils/mediaQuery";
+import { isPageVisible, subscribePageVisibility } from "@/utils/pageVisibility";
 
 export interface CanvasStripInteraction {
   hoverIndex: number | null;
@@ -399,6 +400,7 @@ export function CanvasStrip({
   const [width, setWidth] = useState(0);
   const [visible, setVisible] = useState(() => typeof IntersectionObserver === "undefined");
   const dpr = useSyncExternalStore(subscribeToDpr, currentDpr, () => 1);
+  const pageVisible = useSyncExternalStore(subscribePageVisibility, isPageVisible, () => true);
 
   const commitInteraction = (next: CanvasStripInteraction) => {
     interactionRef.current = next;
@@ -470,7 +472,7 @@ export function CanvasStrip({
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !visible || width <= 0) {
+    if (!canvas || !visible || !pageVisible || width <= 0) {
       paintRef.current = null;
       if (hoverAnimationFrameRef.current != null) {
         cancelAnimationFrame(hoverAnimationFrameRef.current);
@@ -498,7 +500,7 @@ export function CanvasStrip({
     paintRef.current = paint;
     paint();
     return () => { paintRef.current = null; };
-  }, [dpr, draw, height, redrawKey, visible, width]);
+  }, [dpr, draw, height, pageVisible, redrawKey, visible, width]);
 
   const handlePointerLeave = () => {
     if (lastHoverIndexRef.current === null) return;
