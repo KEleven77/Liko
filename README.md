@@ -211,6 +211,9 @@ Liko 保留上游项目的历史和来源说明。下方为原项目文档，SAO
 ## 💖 致谢
 
 感谢以下优秀开源项目与社区贡献者的付出：
+- **[WAOR/Komari-Theme-SAO](https://github.com/WAOR/Komari-Theme-SAO)**：Liko 的直接代码上游，提供工程结构、主题设置、节点数据及监控功能基础。
+- **[nuomiiiii/Lite-theme](https://github.com/nuomiiiii/Lite-theme)**：参考其服务器卡片信息层次、冷白/蓝黑配色、资源与费用排布，以及二级资源详情、网络监测和探测任务总览布局，并按 Liko 的组件与数据接口适配。
+- **[towersip/komari-theme-Glassmorphism](https://github.com/towersip/komari-theme-Glassmorphism)**：参考 Sparkline 延迟趋势与按时段查看历史数据的交互思路；使用 Liko 现有 Canvas 与历史数据模型实现，未复制其源码或素材。
 - **[stqfdyr/komari-theme-Lumina](https://github.com/stqfdyr/komari-theme-Lumina)**：初代优雅主题开创者。
 - **[shanyang242/Komari-Theme-LuminaPlus](https://github.com/shanyang242/Komari-Theme-LuminaPlus)**：出色的功能增强分支与架构设计。
 - **[volcano-1025/CFSM-Theme-LuminaPlus](https://github.com/volcano-1025/CFSM-Theme-LuminaPlus)**：CFSM 平台的早期移植探索。
