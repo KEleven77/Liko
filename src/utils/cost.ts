@@ -1,5 +1,5 @@
 import type { NodeInfo } from "@/types/komari";
-import { normalizeBillingCycle } from "@/utils/billing";
+import { normalizeBillingCycle, remainingCycleValue } from "@/utils/billing";
 import { fetchWithTimeout } from "@/utils/abort";
 import { resolveExpireTimestamp } from "@/utils/format";
 import { buildNodeIdentitySet, nodeMatchesIdentitySet, normalizeNodeIdentityList } from "@/utils/nodeIdentity";
@@ -289,34 +289,6 @@ function cycleMonths(days: number) {
   return 0;
 }
 
-function remainingCycleValue(
-  price: number,
-  cycleDays: number,
-  expiredAt: string | number | null | undefined,
-  atMs: number = Date.now(),
-) {
-  const expiresMs = resolveExpireTimestamp(expiredAt);
-  // 没有真实到期(未设置 / 永久 / Go 零时哨兵):当成下面 >100 年的情况——永久 / 一次性购买仍算作
-  // 一个周期的预付价值,而不是从剩余总额里悄悄消失。
-  if (expiresMs == null) return price;
-
-  const diffMs = expiresMs - atMs;
-  if (diffMs <= 0) return 0;
-
-  // 到期超过 100 年的节点属于长期 / 一次性购买(后端自动续费也是这么处理的)——报一个周期的价值,
-  // 而不是天文数字的倍数。
-  const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365);
-  if (diffYears > 100) return price;
-
-  if (cycleDays > 0) {
-    // `price` 是单个账单周期的费用(后端每续一个周期就把到期时间往后推一期),所以仍剩的预付价值就是
-    // 到期前剩余周期数 × price。这里故意不设上限:月付套餐预付了 6 个月的节点,确实剩 6 倍周期价。
-    return price * (diffMs / (cycleDays * 24 * 60 * 60 * 1000));
-  }
-
-  return price;
-}
-
 // 统一签名格式:符号一律放在 ¥ 前面(+¥ x / -¥ x),0 也带 +,避免「+¥」和「¥ -」两种写法混用。
 export function formatSignedCny(value: number) {
   const sign = value < 0 ? "-" : "+";
@@ -419,16 +391,21 @@ export async function getExchangeRates(
   }
 }
 
-function convertToCny(
+export function convertCurrency(
   amount: number,
   currency: unknown,
+  target: string,
   rates: Record<string, number>,
 ) {
   const code = currencyCode(currency);
-  if (!code) return null;
-  if (code === COST_TARGET_CURRENCY) return amount;
-  if (!rates[code] || !rates[COST_TARGET_CURRENCY]) return null;
-  return (amount / rates[code]) * rates[COST_TARGET_CURRENCY];
+  const targetCode = currencyCode(target);
+  if (!Number.isFinite(amount) || !code || !targetCode) return null;
+  if (code === targetCode || amount === 0) return amount;
+  const sourceRate = rates[code];
+  const targetRate = rates[targetCode];
+  if (!Number.isFinite(sourceRate) || sourceRate! <= 0 || !Number.isFinite(targetRate) || targetRate! <= 0) return null;
+  const converted = (amount / sourceRate!) * targetRate!;
+  return Number.isFinite(converted) ? converted : null;
 }
 
 export function calculateCostSummary(
@@ -506,7 +483,7 @@ export function calculateCostSummary(
       continue;
     }
 
-    const converted = convertToCny(price, node.currency, rates);
+    const converted = convertCurrency(price, node.currency, COST_TARGET_CURRENCY, rates);
     if (converted == null || !Number.isFinite(converted)) {
       premiumTotalCny += premium;
       premiumMonthlyTotalCny += premiumMonthly;

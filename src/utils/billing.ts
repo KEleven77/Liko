@@ -1,4 +1,28 @@
-import { getExpireDaysRemaining, LONG_TERM_EXPIRE_DAYS } from "@/utils/format";
+import { getExpireDaysRemaining, LONG_TERM_EXPIRE_DAYS, resolveExpireTimestamp } from "@/utils/format";
+
+export function remainingCycleValue(
+  price: number,
+  cycleDays: number,
+  expiredAt: string | number | null | undefined,
+  atMs: number = Date.now(),
+) {
+  const expiresMs = resolveExpireTimestamp(expiredAt);
+  if (expiresMs == null) return price;
+  const diffMs = expiresMs - atMs;
+  if (diffMs <= 0) return 0;
+  // Long-term purchases retain one cycle of value; prepaid cycles are not capped.
+  if (diffMs / (86_400_000 * 365) > 100) return price;
+  return cycleDays > 0 ? price * (diffMs / (cycleDays * 86_400_000)) : price;
+}
+
+export function formatRemainingValue(
+  node: { price: number; currency: string; billing_cycle?: string | number | null; expired_at?: string | number | null },
+  atMs: number = Date.now(),
+) {
+  if (!Number.isFinite(node.price) || (node.price < 0 && node.price !== -1)) return null;
+  const value = remainingCycleValue(Math.max(0, node.price), normalizeBillingCycle(node.billing_cycle).days, node.expired_at, atMs);
+  return `${resolveCurrencySymbol(node.currency)}${formatPriceNumber(value, true)}`;
+}
 
 const INT_PRICE_FORMATTER = new Intl.NumberFormat("zh-CN", {
   minimumFractionDigits: 0,
@@ -274,4 +298,3 @@ export function formatCompactRenewalPrice({
   const cycle = formatCompactBillingCycleText(billing_cycle);
   return `${symbol}${formatPriceNumber(price, true)}/${cycle}`;
 }
-

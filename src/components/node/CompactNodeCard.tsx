@@ -23,7 +23,7 @@ import { useNodeCardModel } from "@/hooks/useNodeCardModel";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { formatBytes } from "@/utils/format";
 import { HOMEPAGE_MULTI_PING_MIN_COUNT } from "@/utils/pingTasks";
-import { speedRateColor, speedRateColorFromBytes } from "@/utils/metricTone";
+import { speedRateColor } from "@/utils/metricTone";
 import { supportsFineHover } from "@/utils/mediaQuery";
 import { formatHealthBucketTooltip } from "./pingBucketText";
 import { MultiPingStatus } from "./MultiPingStatus";
@@ -45,12 +45,10 @@ import type {
   NodeMetrics,
   PingOverviewBucket,
   PingOverviewItem,
-  TrafficTrendSample,
 } from "@/types/komari";
 import type { ByteRateDisplay } from "@/utils/format";
 import type { TrafficDisplay } from "@/utils/traffic";
 
-const TRAFFIC_DOT_COUNT = 16;
 const HEALTH_BAR_COUNT = 18;
 type CompactNode = NodeInfo & NodeMetrics;
 type CompactTag = { label: string; color: string };
@@ -124,66 +122,25 @@ function CompactInfoTile({
   );
 }
 
-function CompactTrafficPulse({
-  up,
-  down,
-}: {
-  up: TrafficTrendSample[];
-  down: TrafficTrendSample[];
-}) {
-  const upSelected = up.slice(-TRAFFIC_DOT_COUNT);
-  const downSelected = down.slice(-TRAFFIC_DOT_COUNT);
-  const upPadding = Math.max(0, TRAFFIC_DOT_COUNT - upSelected.length);
-  const downPadding = Math.max(0, TRAFFIC_DOT_COUNT - downSelected.length);
-
-  return (
-    <span className="compact-node-traffic-pulse" aria-hidden>
-      {Array.from({ length: TRAFFIC_DOT_COUNT }, (_, index) => {
-        const upSample = index < upPadding ? null : upSelected[index - upPadding];
-        const downSample = index < downPadding ? null : downSelected[index - downPadding];
-        const upValue = upSample?.value ?? 0;
-        const downValue = downSample?.value ?? 0;
-        const active = upValue > 0 || downValue > 0;
-        const level = Math.max(upSample?.level ?? 0, downSample?.level ?? 0);
-        // 每点按其主方向(上/下取大)速率的单位档上色,与大卡的速度档色一致;大小/透明度仍按 level。
-        // 仅活跃点计算颜色,空闲点直接用中性色,省掉无谓的 formatByteRate。
-        const style = {
-          "--compact-traffic-dot-color": active
-            ? speedRateColorFromBytes(Math.max(upValue, downValue))
-            : "var(--progress-bg)",
-          "--compact-traffic-dot-scale": active ? `${0.68 + level * 0.62}` : "0.48",
-          opacity: active ? 0.5 + level * 0.42 : 0.38,
-        } as CSSProperties;
-
-        return (
-          <span
-            key={index}
-            data-active={active ? "true" : "false"}
-            style={style}
-          />
-        );
-      })}
-    </span>
-  );
-}
-
 function CompactInfoRow({
   icon,
   label,
   value,
   unit,
   color,
+  className,
 }: {
   icon: ReactNode;
   label?: string;
-  value: string;
+  value: ReactNode;
   unit?: string;
   color?: string;
+  className?: string;
 }) {
   const style = color ? ({ "--compact-info-row-color": color } as CSSProperties) : undefined;
 
   return (
-    <span className="compact-node-info-row" style={style}>
+    <span className={clsx("compact-node-info-row", className)} style={style}>
       <span className="compact-node-info-row-label">
         {icon}
         {label && <span>{label}</span>}
@@ -443,7 +400,6 @@ function CompactNodeVitals({
 
 function CompactNodeInfoStrip({
   node,
-  trafficTrend,
   upRate,
   downRate,
   showTrafficTotal,
@@ -452,10 +408,10 @@ function CompactNodeInfoStrip({
   expire,
   expireColor,
   renewalPrice,
+  remainingValue,
   isPriceVisible = true,
 }: {
   node: CompactNode;
-  trafficTrend: { up: TrafficTrendSample[]; down: TrafficTrendSample[] };
   upRate: ByteRateDisplay;
   downRate: ByteRateDisplay;
   showTrafficTotal: boolean;
@@ -464,6 +420,7 @@ function CompactNodeInfoStrip({
   expire: CompactExpire;
   expireColor: string;
   renewalPrice: string | null;
+  remainingValue: string | null;
   isPriceVisible?: boolean;
 }) {
   const infoTileCount =
@@ -490,7 +447,6 @@ function CompactNodeInfoStrip({
           unit={downRate.unit}
           color={speedRateColor(downRate.unit)}
         />
-        <CompactTrafficPulse up={trafficTrend.up} down={trafficTrend.down} />
       </CompactInfoTile>
       {showTrafficTotal && (
         <CompactInfoTile
@@ -526,12 +482,24 @@ function CompactNodeInfoStrip({
         >
           <CompactInfoRow
             icon={<Calendar size={12} strokeWidth={2.1} />}
-            value={formatCompactExpire(expire)}
+            className="compact-node-billing-row"
+            value={(
+              <>
+                <span>{formatCompactExpire(expire)}</span>
+                {isPriceVisible && remainingValue !== null && (
+                  <span className="compact-node-remaining-value">
+                    <span className="compact-node-billing-divider" aria-hidden="true">|</span>
+                    <span>{remainingValue}</span>
+                  </span>
+                )}
+              </>
+            )}
             color={expireColor}
           />
           {isPriceVisible ? (
             <CompactInfoRow
               icon={<CircleDollarSign size={12} strokeWidth={2.2} />}
+              className="compact-node-billing-row"
               // 后端 price 为空/0/-1 都表示免费，小卡片直接写「免费」而不是留白。
               value={renewalPrice || "免费"}
               color={renewalPrice ? "var(--status-success)" : "var(--text-tertiary)"}
@@ -697,13 +665,13 @@ export const CompactNodeCard = memo(function CompactNodeCard({
   const {
     node,
     traffic,
-    trafficTrend,
     ping,
     pingBuckets,
     homepagePingLines,
     compactFooterTags: footerTags,
     subtitle,
     compactRenewalPrice,
+    remainingValue,
     isPriceVisible,
     expire,
     expireColor,
@@ -736,7 +704,6 @@ export const CompactNodeCard = memo(function CompactNodeCard({
       <CompactNodeVitals node={node} loadFraction={loadFraction} />
       <CompactNodeInfoStrip
         node={node}
-        trafficTrend={trafficTrend}
         upRate={upRate}
         downRate={downRate}
         showTrafficTotal={showTrafficTotal}
@@ -745,6 +712,7 @@ export const CompactNodeCard = memo(function CompactNodeCard({
         expire={expire}
         expireColor={expireColor}
         renewalPrice={compactRenewalPrice}
+        remainingValue={remainingValue}
         isPriceVisible={isPriceVisible}
       />
       <CompactTrafficBar traffic={traffic} uptimeLabel={uptimeLabel} />

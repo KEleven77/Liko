@@ -50,6 +50,7 @@ import {
   type CostPremiumEntry,
 } from "@/utils/cost";
 import { normalizeNodeIdentityList } from "@/utils/nodeIdentity";
+import { CARD_CURRENCIES, CARD_CURRENCY_LABELS, type CardCurrency } from "@/utils/themeSettings";
 import {
   dedupeGroupLabels,
   normalizeHomeGroupOrder,
@@ -225,6 +226,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
         .map((uuid) => [uuid, settings.costPremiums[uuid]]),
     ),
     costRateApiUrl: settings.costRateApiUrl,
+    cardCurrency: settings.cardCurrency,
   };
 }
 
@@ -1412,6 +1414,21 @@ export function ThemeManage() {
                       onPatch={patch}
                     />
                   </div>
+
+                  <label className="flex flex-col gap-2">
+                    <span className="setting-subhead-title">首页卡片费用币种</span>
+                    <SettingSelect
+                      aria-label="首页卡片费用币种"
+                      value={draft.cardCurrency}
+                      onChange={(event) => patch("cardCurrency", event.target.value as CardCurrency)}
+                    >
+                      {CARD_CURRENCIES.map((currency) => (
+                        <option key={currency} value={currency}>
+                          {CARD_CURRENCY_LABELS[currency]}
+                        </option>
+                      ))}
+                    </SettingSelect>
+                  </label>
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="surface-inset flex flex-col gap-2 px-4 py-3">

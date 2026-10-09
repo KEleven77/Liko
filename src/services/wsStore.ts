@@ -689,9 +689,12 @@ function sortNodes(nodes: NodeInfo[]) {
 }
 
 function syncNodeInfo() {
-  nodeInfoPromise ??= performNodeInfoSync().finally(() => {
-    nodeInfoPromise = null;
-  });
+  if (!nodeInfoPromise) {
+    const promise = performNodeInfoSync().finally(() => {
+      if (nodeInfoPromise === promise) nodeInfoPromise = null;
+    });
+    nodeInfoPromise = promise;
+  }
   return nodeInfoPromise;
 }
 
@@ -835,8 +838,10 @@ async function refreshLatestStatus(nodeInfoReady?: Promise<void>) {
     );
   } finally {
     controller.abort();
-    if (liveStatusController === controller) liveStatusController = null;
-    refreshInFlight = false;
+    if (liveStatusController === controller) {
+      liveStatusController = null;
+      refreshInFlight = false;
+    }
   }
 }
 
@@ -848,7 +853,7 @@ let bootstrapSkipTicks = 0;
 async function bootstrap() {
   try {
     const nodeInfoReady = syncNodeInfo();
-    const statusReady = refreshLatestStatus(nodeInfoReady);
+    const statusReady = refreshLatestStatus(hydrated ? undefined : nodeInfoReady);
     await nodeInfoReady;
     await statusReady;
     bootstrapBackoffTicks = 0;
@@ -867,15 +872,59 @@ let retainCount = 0;
 let stopTimer: number | null = null;
 let liveStatusTimer: number | null = null;
 let nodeInfoTimer: number | null = null;
+let lastWakeAt = 0;
+let hiddenAt: number | null = null;
+
+function isPageHidden() {
+  return typeof document !== "undefined" && document.visibilityState === "hidden";
+}
+
+function refreshOnWake() {
+  if (!started || isPageHidden()) return;
+  const now = Date.now();
+  if (now - lastWakeAt < LIVE_STATUS_REFRESH_INTERVAL_MS) return;
+  lastWakeAt = now;
+  // A request suspended with the page must not block the new foreground fetch.
+  if (hiddenAt !== null && now - hiddenAt >= LIVE_STATUS_REFRESH_INTERVAL_MS) {
+    liveStatusController?.abort();
+    liveStatusController = null;
+    refreshInFlight = false;
+    nodeInfoController?.abort();
+    nodeInfoController = null;
+    nodeInfoPromise = null;
+  }
+  hiddenAt = null;
+  scrollActive = false;
+  refreshDeferredWhileScrolling = false;
+  bootstrapSkipTicks = 0;
+  void bootstrap();
+}
+
+function handleVisibilityChange() {
+  if (isPageHidden()) {
+    hiddenAt = Date.now();
+  } else {
+    refreshOnWake();
+  }
+}
 
 function ensureStarted() {
   if (started) return;
   started = true;
+  lastWakeAt = Date.now();
+  hiddenAt = isPageHidden() ? lastWakeAt : null;
+  window.addEventListener("focus", refreshOnWake);
+  window.addEventListener("pageshow", refreshOnWake);
+  window.addEventListener("online", refreshOnWake);
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+  }
 
   ensureScrollTrackingStarted();
   void bootstrap();
   // 实时指标与节点信息使用独立轮询节奏。
   liveStatusTimer = window.setInterval(() => {
+    if (isPageHidden()) return;
     if (!hydrated) {
       if (bootstrapSkipTicks > 0) {
         bootstrapSkipTicks -= 1;
@@ -887,6 +936,7 @@ function ensureStarted() {
     void refreshLatestStatus();
   }, LIVE_STATUS_REFRESH_INTERVAL_MS);
   nodeInfoTimer = window.setInterval(() => {
+    if (isPageHidden()) return;
     void syncNodeInfo().catch(() => {});
   }, NODE_INFO_REFRESH_INTERVAL_MS);
 }
@@ -913,6 +963,13 @@ export function retainStore() {
 }
 
 function stopStore() {
+  window.removeEventListener("focus", refreshOnWake);
+  window.removeEventListener("pageshow", refreshOnWake);
+  window.removeEventListener("online", refreshOnWake);
+  if (typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }
+  hiddenAt = null;
   if (stopTimer != null) {
     window.clearTimeout(stopTimer);
     stopTimer = null;
@@ -921,6 +978,8 @@ function stopStore() {
   liveStatusController = null;
   nodeInfoController?.abort();
   nodeInfoController = null;
+  nodeInfoPromise = null;
+  refreshInFlight = false;
   if (liveStatusTimer != null) {
     window.clearInterval(liveStatusTimer);
     liveStatusTimer = null;

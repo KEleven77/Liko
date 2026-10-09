@@ -152,6 +152,7 @@ export interface ThemeSettings {
     number | { amount?: number; paidCny?: number; acquiredAt?: string }
   >;
   costRateApiUrl?: string;
+  cardCurrency?: string;
 }
 
 export const PublicConfigSchema = z

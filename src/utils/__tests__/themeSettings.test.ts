@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { normalizeThemeSettings } from "@/utils/themeSettings";
 
 describe("normalizeThemeSettings", () => {
+  it("defaults card currency to original and accepts supported currencies", () => {
+    expect(normalizeThemeSettings({}).cardCurrency).toBe("original");
+    expect(normalizeThemeSettings({ cardCurrency: "USD" }).cardCurrency).toBe("USD");
+    expect(normalizeThemeSettings({ cardCurrency: "unknown" }).cardCurrency).toBe("original");
+  });
   it("keeps bars as the default and accepts only the explicit sparkline mode", () => {
     expect(normalizeThemeSettings({}).homepagePingDisplayMode).toBe("bars");
     expect(normalizeThemeSettings({ homepagePingDisplayMode: "sparkline" }).homepagePingDisplayMode).toBe("sparkline");

@@ -3,7 +3,29 @@ import {
   formatBillingCycle,
   formatCompactRenewalPrice,
   formatRenewalPrice,
+  formatRemainingValue,
 } from "@/utils/billing";
+
+describe("formatRemainingValue", () => {
+  const now = Date.UTC(2026, 9, 9);
+  const node = { price: 34, currency: "CNY", billing_cycle: 30, expired_at: new Date(now + 18.7 * 86_400_000).toISOString() };
+  it("prorates the remaining period in the original currency", () => {
+    expect(formatRemainingValue(node, now)).toBe("¥21.19");
+    expect(formatRemainingValue({ ...node, currency: "USD" }, now)).toBe("$21.19");
+  });
+  it("handles expired, free and missing prices", () => {
+    expect(formatRemainingValue({ ...node, expired_at: new Date(now).toISOString() }, now)).toBe("¥0");
+    expect(formatRemainingValue({ ...node, price: -1 }, now)).toBe("¥0");
+    expect(formatRemainingValue({ ...node, price: NaN }, now)).toBeNull();
+    expect(formatRemainingValue({ ...node, price: -2 }, now)).toBeNull();
+    expect(formatRemainingValue({ ...node, price: -0.5 }, now)).toBeNull();
+  });
+  it("retains lifetime value and does not cap prepaid cycles", () => {
+    expect(formatRemainingValue({ ...node, billing_cycle: -1 }, now)).toBe("¥34");
+    expect(formatRemainingValue({ ...node, expired_at: undefined }, now)).toBe("¥34");
+    expect(formatRemainingValue({ ...node, expired_at: new Date(now + 60 * 86_400_000).toISOString() }, now)).toBe("¥68");
+  });
+});
 
 function inDays(days: number) {
   return new Date(Date.now() + days * 86_400_000).toISOString();

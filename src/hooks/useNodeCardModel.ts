@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { convertCurrency, getExchangeRates } from "@/utils/cost";
 import { useFakePingFallback } from "@/hooks/useFakePing";
 import { useHourlyClock, useMinuteClock } from "@/hooks/useClock";
 import { useNodeCardSnapshots } from "@/hooks/useNode";
@@ -11,7 +13,7 @@ import {
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { usePriceVisibility } from "@/hooks/usePriceVisibility";
 import type { HomepagePingDisplayLine, HomepagePingLine } from "@/types/komari";
-import { formatCompactRenewalPrice, formatRenewalPrice } from "@/utils/billing";
+import { formatCompactRenewalPrice, formatRenewalPrice, formatRemainingValue, resolveCurrencySymbol } from "@/utils/billing";
 import { getExpireTextColor } from "@/utils/expireStatus";
 import {
   formatBytes,
@@ -62,8 +64,18 @@ export function useNodeCardModel(
     homepagePingTaskIdsByClient,
     enableHomepageMultiPing,
     homepageMultiPingTaskIds,
+    cardCurrency,
+    costRateApiUrl,
   } = useThemeSettings();
   const { isPriceVisible } = usePriceVisibility();
+  const rateQuery = useQuery({
+    queryKey: ["cost-rates", costRateApiUrl],
+    queryFn: ({ signal }) => getExchangeRates(costRateApiUrl, { signal }),
+    enabled: isPriceVisible && cardCurrency !== "original" && !!meta && meta.price > 0,
+    staleTime: 60 * 60 * 1000,
+    retry: 1,
+  });
+  const rates = rateQuery.data?.rates;
   const multiPingConfigured =
     enableHomepageMultiPing &&
     isHomepageMultiPingConfigured(homepageMultiPingTaskIds);
@@ -168,6 +180,12 @@ export function useNodeCardModel(
         : group
           ? [{ label: group, color: "gray" }]
           : [];
+    const convertedPrice = cardCurrency !== "original" && meta.price > 0
+      ? convertCurrency(meta.price, meta.currency, cardCurrency, rates ?? {})
+      : null;
+    const billingMeta = cardCurrency !== "original" && (convertedPrice !== null || meta.price === 0 || meta.price === -1)
+      ? { ...meta, price: convertedPrice ?? meta.price, currency: resolveCurrencySymbol(cardCurrency) }
+      : meta;
     return {
       tags,
       footerTags: fallbackFooterTags,
@@ -176,12 +194,13 @@ export function useNodeCardModel(
       expire: formatExpireDays(meta.expired_at, now),
       expireColor: getExpireTextColor(meta.expired_at, now),
       isPriceVisible,
-      renewalPrice: isPriceVisible ? formatRenewalPrice(meta) : null,
-      compactRenewalPrice: isPriceVisible ? formatCompactRenewalPrice(meta) : null,
+      renewalPrice: isPriceVisible ? formatRenewalPrice(billingMeta) : null,
+      compactRenewalPrice: isPriceVisible ? formatCompactRenewalPrice(billingMeta) : null,
+      remainingValue: isPriceVisible ? formatRemainingValue(billingMeta, now) : null,
       osName: resolveOsInfo(meta.os).name,
       loadBaseline: meta.cpu_cores > 0 ? meta.cpu_cores : 4,
     };
-  }, [isPriceVisible, meta, now, showCardGroup]);
+  }, [cardCurrency, isPriceVisible, meta, now, rates, showCardGroup]);
 
   // ping 派生的颜色只在 ping item 变化时才变。
   const pingModel = useMemo(

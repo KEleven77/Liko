@@ -27,6 +27,13 @@ import {
 export type Appearance = "system" | "light" | "dark";
 export type NodeViewMode = "large" | "compact" | "mini" | "list";
 export type HomepagePingDisplayMode = "bars" | "sparkline";
+export const CARD_CURRENCIES = ["original", "CNY", "USD", "HKD", "EUR", "GBP", "JPY", "TWD", "CAD", "AUD", "SGD"] as const;
+export type CardCurrency = (typeof CARD_CURRENCIES)[number];
+export const CARD_CURRENCY_LABELS: Record<CardCurrency, string> = {
+  original: "原币种", CNY: "人民币 CNY", USD: "美元 USD", HKD: "港币 HKD",
+  EUR: "欧元 EUR", GBP: "英镑 GBP", JPY: "日元 JPY", TWD: "新台币 TWD",
+  CAD: "加元 CAD", AUD: "澳元 AUD", SGD: "新加坡元 SGD",
+};
 
 export interface ResolvedThemeSettings {
   defaultAppearance: Appearance;
@@ -67,6 +74,7 @@ export interface ResolvedThemeSettings {
   costIgnoredNodes: string[];
   costPremiums: Record<string, CostPremiumEntry>;
   costRateApiUrl: string;
+  cardCurrency: CardCurrency;
 }
 
 export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
@@ -108,6 +116,7 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   costIgnoredNodes: [],
   costPremiums: {},
   costRateApiUrl: DEFAULT_COST_RATE_API_URL,
+  cardCurrency: "original",
 };
 
 export function isAppearance(value: unknown): value is Appearance {
@@ -221,5 +230,7 @@ export function normalizeThemeSettings(
     costIgnoredNodes: normalizeCostIgnoredNodes(settings?.costIgnoredNodes),
     costPremiums: normalizeCostPremiums(settings?.costPremiums),
     costRateApiUrl: normalizeCostRateApiUrl(settings?.costRateApiUrl),
+    cardCurrency: CARD_CURRENCIES.includes(settings?.cardCurrency as CardCurrency)
+      ? settings!.cardCurrency as CardCurrency : "original",
   };
 }

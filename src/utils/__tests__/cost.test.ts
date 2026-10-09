@@ -3,6 +3,7 @@ import {
   calculateCostPremiumAmount,
   calculateCostPremiumBasisAt,
   calculateCostSummary,
+  convertCurrency,
   formatCnyMoney,
   getExchangeRates,
   isCostRateApiUrlValid,
@@ -15,6 +16,22 @@ import type { NodeInfo } from "@/types/komari";
 
 const RATES = { USD: 1, CNY: 7 };
 const RATES_X = { USD: 1, EUR: 0.9, CNY: 7 };
+
+describe("convertCurrency", () => {
+  it("converts aliases across source and target currencies", () => {
+    expect(convertCurrency(10, "$", "CNY", RATES_X)).toBe(70);
+    expect(convertCurrency(70, "人民币", "USD", RATES_X)).toBe(10);
+    expect(convertCurrency(9, "EUR", "USD", RATES_X)).toBe(10);
+    expect(convertCurrency(70, "", "USD", RATES_X)).toBe(10);
+  });
+  it("does not require rates for the same currency and rejects invalid rates", () => {
+    expect(convertCurrency(34, "¥", "CNY", {})).toBe(34);
+    expect(convertCurrency(10, "USD", "HKD", RATES_X)).toBeNull();
+    expect(convertCurrency(10, "USD", "CNY", { USD: 1, CNY: -7 })).toBeNull();
+    expect(convertCurrency(10, "unknown", "USD", RATES_X)).toBeNull();
+    expect(convertCurrency(NaN, "USD", "CNY", RATES_X)).toBeNull();
+  });
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
