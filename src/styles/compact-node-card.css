@@ -491,7 +491,11 @@
 }
 
 .preview-node-section-head > span { color: var(--text-tertiary); font-size: 11px; }
-.preview-node-network { min-width: 0; }
+.preview-node-network {
+  min-width: 0;
+  /* Equal-height cards keep spare space in the task area, not below the tags. */
+  flex: 1 0 auto;
+}
 .preview-node-network-labels,
 .preview-node-v1 .multi-ping-sparkline-row {
   display: grid;
