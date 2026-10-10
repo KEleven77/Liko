@@ -5,7 +5,6 @@ import {
   getHomeNodeSummariesSnapshot,
   getNodeMetaSnapshot,
   getNodeMetricsSnapshot,
-  getNodeTrafficTrendSnapshot,
   getNodeOnlineSummariesSnapshot,
   getVisibleNodeUuidsSnapshot,
   subscribeHomeNodeSummaries,
@@ -15,12 +14,11 @@ import {
   subscribeVisibleNodeUuids,
   subscribeToNodeMeta,
   subscribeToNodeMetrics,
-  subscribeToNodeTrafficTrend,
   getStoreStatusSnapshot,
   type HomeNodeSummary,
   type NodeOnlineSummary,
 } from "@/services/wsStore";
-import type { NodeInfo, NodeMetrics, TrafficTrendSample } from "@/types/komari";
+import type { NodeInfo, NodeMetrics } from "@/types/komari";
 
 const noopUnsubscribe = () => undefined;
 
@@ -62,23 +60,11 @@ function useNodeMetricsSnapshot(uuid: string, enabled = true): NodeMetrics | und
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
-function useNodeTrafficTrendSnapshot(
-  uuid: string,
-): { up: TrafficTrendSample[]; down: TrafficTrendSample[] } {
-  const subscribe = useCallback(
-    (callback: () => void) => subscribeToNodeTrafficTrend(uuid, callback),
-    [uuid],
-  );
-  const getSnapshot = useCallback(() => getNodeTrafficTrendSnapshot(uuid), [uuid]);
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
-
 export function useNodeCardSnapshots(uuid: string) {
   useEnsured();
   return {
     meta: useNodeMetaSnapshot(uuid),
     metrics: useNodeMetricsSnapshot(uuid),
-    trafficTrend: useNodeTrafficTrendSnapshot(uuid),
   };
 }
 

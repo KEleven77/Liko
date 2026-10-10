@@ -96,7 +96,7 @@ export function formatListPingStatus(
   }
 }
 
-// 细 canvas 分段条 + 百分比,与大卡 MetricBar 同一视觉语言,但压成一格(数值在上、细条在下)。
+// Compact list gauges keep the value above the history-independent track.
 function ListGauge({
   value,
   fraction,

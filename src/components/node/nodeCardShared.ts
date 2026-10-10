@@ -88,11 +88,7 @@ export function nodeDetailLinkLabels(name: string, osName: string) {
   };
 }
 
-/** 极小但非零流量只显示一段内的细提示，避免夸大用量。 */
-export const TRAFFIC_SLIVER_RATIO = 0.1;
-
-// LatencyBars(延迟)和 QualityBars(丢包)共享的柱状条几何/命中检测。两者都渲染
-// 定数量的 canvas 柱子行,所以 slot 计算和柱宽/间距必须保持一致。
+// Shared geometry for latency history bars and their pointer hit testing.
 
 /** 指针 offset 落在哪个 slot(0..count-1),没有柱子时返回 null。 */
 export function getBarSlot(offsetX: number, width: number, count: number): number | null {

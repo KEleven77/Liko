@@ -9,7 +9,7 @@ function dateAfter(days: number) {
   return new Date(Date.now() + days * 86_400_000).toISOString();
 }
 
-const nodes: NodeInfo[] = [
+const baseNodes: NodeInfo[] = [
   {
     uuid: "tokyo-edge-01",
     bandwidth: "1 Gbps",
@@ -210,6 +210,41 @@ const nodes: NodeInfo[] = [
   },
 ];
 
+const layoutSamples = [
+  { uuid: "osaka-relay-01", name: "Osaka Relay", region: "JP", bandwidth: "100 Mbps", price: 0, tags: "中转<Cyan>" },
+  { uuid: "london-edge-01", name: "London Edge Premium Long Machine Name", region: "GB", bandwidth: "10 Gbps", price: 1234.56, tags: "边缘<Cyan>; 高带宽<Teal>; 欧洲<Grass>; BGP<Plum>; 优选<Ruby>; 备用<Gold>" },
+  { uuid: "seoul-api-01", name: "Seoul API", region: "KR", bandwidth: "500 Mbps", price: 8.5, tags: "API<Blue>; 亚洲<Mint>" },
+  { uuid: "los-angeles-core-01", name: "Los Angeles Core", region: "US", bandwidth: "2.5 Gbps", price: 99, tags: "核心<Crimson>; 美西<Sky>; 三网优化<Mint>" },
+  { uuid: "paris-storage-01", name: "Paris Storage", region: "FR", bandwidth: "1 Gbps", price: 299.99, tags: "存储<Amber>; 归档<Brown>" },
+  { uuid: "taipei-monitor-01", name: "Taipei Monitor", region: "TW", bandwidth: "300 Mbps", price: 15, tags: "监控<Blue>; 备用<Gold>; 亚洲<Mint>; IPv6<Plum>" },
+];
+
+// Distribute long and short cards across rows without changing status profile indexes.
+const layoutSampleOrder = [
+  "london-edge-01", "osaka-relay-01", "hong-kong-cache-01", "tokyo-edge-01",
+  "los-angeles-core-01", "frankfurt-db-01", "paris-storage-01", "new-york-worker-01",
+  "singapore-api-01", "taipei-monitor-01", "seoul-api-01", "sydney-backup-01",
+];
+
+const nodes: NodeInfo[] = [...baseNodes, ...layoutSamples.map((sample, index) => ({
+  ...baseNodes[index],
+  ...sample,
+  group: "测试",
+  weight: 70 + index * 10,
+  ipv4: `203.0.113.${71 + index}`,
+  ipv6: `2001:db8::${71 + index}`,
+  public_remark: "本地响应式布局测试节点",
+}))].map((node) => ({ ...node, weight: (layoutSampleOrder.indexOf(node.uuid) + 1) * 10 }));
+
+const layoutSamplePingTasks = {
+  "osaka-relay-01": [],
+  "london-edge-01": [1, 2, 3, 4, 5, 6],
+  "seoul-api-01": [1, 2],
+  "los-angeles-core-01": [1, 2, 3, 4, 5],
+  "paris-storage-01": [1],
+  "taipei-monitor-01": [1, 2, 3, 4],
+};
+
 const statusProfiles = [
   [18, 2.1, 0.7, 34, 11, 18_000_000, 72_000_000, 820 * GIB, 1.1 * TIB, true],
   [46, 9.2, 2.6, 57, 38, 32_000_000, 98_000_000, 1.8 * TIB, 2.2 * TIB, true],
@@ -217,6 +252,12 @@ const statusProfiles = [
   [63, 11.8, 3.4, 66, 78, 21_000_000, 54_000_000, 1.4 * TIB, 1.7 * TIB, true],
   [31, 3.4, 1.2, 42, 24, 28_000_000, 86_000_000, 740 * GIB, 1.3 * TIB, true],
   [0, 0, 0, 38, 232, 0, 0, 1.1 * TIB, 880 * GIB, false],
+  [12, 0.8, 0, 18, 22, 400_000, 2_000_000, 40 * GIB, 80 * GIB, true],
+  [52, 4.2, 1, 44, 96, 22_000_000, 81_000_000, 1 * TIB, 2 * TIB, true],
+  [28, 1.4, 0, 31, 35, 3_000_000, 12_000_000, 120 * GIB, 320 * GIB, true],
+  [67, 7.8, 2, 63, 155, 12_000_000, 38_000_000, 800 * GIB, 1 * TIB, true],
+  [19, 1.2, 0, 78, 118, 800_000, 4_000_000, 200 * GIB, 600 * GIB, true],
+  [8, 0.3, 0, 21, 42, 200_000, 900_000, 20 * GIB, 60 * GIB, true],
 ] as const;
 
 function latestStatus() {
@@ -226,7 +267,7 @@ function latestStatus() {
       const [cpu, load, swapPct, diskPct, , up, down, totalUp, totalDown, online] =
         statusProfiles[index];
       if (!online) return [node.uuid, { online: false }];
-      const memoryPct = index === 2 ? 88 : 36 + index * 7;
+      const memoryPct = index === 2 ? 88 : 36 + (index % 6) * 7;
       return [
         node.uuid,
         {
@@ -586,17 +627,18 @@ export function installDevMockApi() {
           enableHomepageMultiPing:
             previewParams.get("multiPing") === "1",
           homepageMultiPingTaskIds: [1, 2, 3],
-          homepagePingTaskIdsByClient:
-            previewParams.get("customPing") === "1"
-              ? {
-                  "tokyo-edge-01": [1],
-                  "singapore-api-01": [1, 2, 3, 4],
-                }
-              : {},
+          homepagePingTaskIdsByClient: {
+            ...(previewParams.get("customPing") === "1" ? {
+              "tokyo-edge-01": [1],
+              "singapore-api-01": [1, 2, 3, 4],
+            } : {}),
+            ...layoutSamplePingTasks,
+          },
           }),
           ...(previewParams.get("morePing") === "1" ? {
             homepagePingTaskIdsByClient: {
               ...((savedThemeSettings[theme]?.homepagePingTaskIdsByClient ?? {}) as Record<string, number[]>),
+              ...layoutSamplePingTasks,
               "hong-kong-cache-01": [1, 2, 3, 4, 5, 6, 7, 8],
               "sydney-backup-01": [],
             },

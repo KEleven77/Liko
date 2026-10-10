@@ -1,0 +1,147 @@
+:root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) {
+  --bg-0: #f5f8fb;
+  --surface-bg: #f5f8fb;
+  --surface: #ffffff;
+  --surface-elev: #f0f4f8;
+  --surface-sunken: #f7f9fb;
+  --border: #e1e8ef;
+  --border-subtle: #e8edf2;
+  --hairline: #e8edf2;
+  --text-primary: #202b35;
+  --text-secondary: #6c7d8f;
+  --text-tertiary: #8a9bad;
+  --progress-bg: #eaf0f5;
+  --progress-cpu: #168bfa;
+  --progress-disk: #ee963a;
+}
+
+:root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)),
+:root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) body {
+  /* Keep the homepage palette independent of the inline color-mode backdrop. */
+  background: var(--bg-0) !important;
+}
+
+:root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-top-nav-bar {
+  background: var(--bg-0) !important;
+  border-color: var(--border);
+}
+
+:root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-dashboard-hero,
+:root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-cluster-card {
+  background: #f0f4f8;
+  border-color: var(--border);
+}
+
+:root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-stat-card,
+:root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-progress-container {
+  background: #ffffff;
+  border-color: var(--border-subtle);
+  box-shadow: 0 1px 3px rgb(32 43 53 / 4%);
+}
+
+:root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-progress-section,
+:root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-realtime-chart-card {
+  background: var(--surface-sunken);
+  border-color: var(--border-subtle);
+}
+
+:root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) :is(.preview-node-v1, .server-card, .mini-node-card, .node-list) {
+  background: linear-gradient(180deg, #eff7ff 0%, #ffffff 40%);
+  border-color: #dfe9f3;
+  box-shadow: 0 1px 3px rgb(32 43 53 / 4%);
+}
+
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) {
+  color-scheme: dark;
+  --bg-0: #0e1a26;
+  --surface-bg: #0e1a26;
+  --surface: #1e2a39;
+  --surface-elev: #1e2a39;
+  --surface-sunken: #16222e;
+  --border: #3b4857;
+  --border-subtle: #303e4c;
+  --border-strong: #41617c;
+  --hairline: #303e4c;
+  --text-primary: #f2f5f8;
+  --text-secondary: #b8c3cd;
+  --text-tertiary: #8998a6;
+  --fill-secondary: #304252;
+  --fill-tertiary: #253545;
+  --hover-bg: #22384b;
+  --progress-bg: #2c3d4d;
+  --progress-cpu: #009dff;
+  --progress-disk: #f2a637;
+}
+
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)),
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) body {
+  /* Override the inline background applied by the color-mode preference. */
+  background: #0e1a26 !important;
+}
+
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-top-nav-bar {
+  background: var(--bg-0) !important;
+  border-color: var(--border-subtle);
+}
+
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-dashboard-hero,
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-cluster-card {
+  background: #141b25;
+  border-color: var(--border-subtle);
+}
+
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-stat-card,
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-progress-container {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-stat-card:hover {
+  background: #243345;
+  border-color: #4a6175;
+}
+
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-progress-section,
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-realtime-chart-card {
+  background: var(--surface-sunken);
+  border-color: var(--border-subtle);
+}
+
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-network-section .mao-realtime-chart-card {
+  background: var(--surface);
+  border-color: var(--border-subtle);
+}
+
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) :is(.preview-node-v1, .server-card, .mini-node-card, .node-list) {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 14%);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) :is(.preview-node-v1, .server-card, .mini-node-card, .node-list):not(.is-offline):hover {
+    background: var(--surface);
+    border-color: #3776a3;
+    box-shadow: 0 0 16px rgb(36 143 219 / 20%);
+    transform: none;
+  }
+}
+
+:root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) :is(.preview-node-v1, .server-card, .mini-node-card, .node-list).is-offline {
+  background: #17232f;
+  filter: none;
+}
+:root[data-appearance="light"] .node-list-row.is-offline {
+  background: var(--surface-sunken);
+  filter: none;
+}
+
+:root[data-appearance="dark"] .node-list-row.is-offline {
+  background: #17232f;
+  filter: none;
+}
+
+.node-list-head { background: var(--surface-elev); }
+.node-list-row:not(.node-list-head):hover { background: var(--hover-bg); }
+

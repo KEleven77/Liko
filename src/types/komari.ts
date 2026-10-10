@@ -324,12 +324,6 @@ export interface HomepagePingDisplayLine extends HomepagePingLine {
   buckets: PingOverviewBucket[];
 }
 
-export interface TrafficTrendSample {
-  value: number;
-  level: number;
-  opacity: number;
-}
-
 export interface PingOverviewBucket {
   index: number;
   value: number | null;

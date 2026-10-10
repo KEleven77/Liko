@@ -12,6 +12,10 @@ const miniSource = readFileSync(
   new URL("../../components/node/MiniNodeCard.tsx", import.meta.url),
   "utf8",
 );
+const sharedCardSource = readFileSync(
+  new URL("../../components/node/CompactNodeCard.tsx", import.meta.url),
+  "utf8",
+);
 const nodeGridSource = readFileSync(
   new URL("../../components/node/NodeGrid.tsx", import.meta.url),
   "utf8",
@@ -64,12 +68,13 @@ describe("home responsive layout contracts", () => {
     expect(controlsSource).not.toContain("usePublicConfig");
   });
 
-  it("keeps mini cards observer-free and URL-encodes their detail route", () => {
-    expect(miniSource).not.toMatch(
+  it("shares the mini card layout and URL-encodes its detail route", () => {
+    expect(miniSource).toContain('size="mini"');
+    expect(sharedCardSource).not.toMatch(
       /from\s+["']\.\/(?:MetricBar|LatencyBars|QualityBars|CanvasStrip)["']/,
     );
-    expect(miniSource).not.toContain("<canvas");
-    expect(miniSource).toContain("encodeURIComponent(node.uuid)");
+    expect(sharedCardSource).not.toContain("<canvas");
+    expect(sharedCardSource).toContain("encodeURIComponent(node.uuid)");
   });
 
   it("does not render zero-value overview cards before the node store is hydrated", () => {

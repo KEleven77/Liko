@@ -1,4 +1,4 @@
-import type { NodeInfo, NodeMetrics, NodeRealtime, TrafficTrendSample } from "@/types/komari";
+import type { NodeInfo, NodeMetrics, NodeRealtime } from "@/types/komari";
 import { getNodes, getNodesLatestStatus } from "@/services/api";
 
 type Listener = () => void;
@@ -7,7 +7,6 @@ type RealtimePayload = Record<string, unknown>;
 interface State {
   metaByUuid: Record<string, NodeInfo>;
   metricsByUuid: Record<string, NodeMetrics>;
-  trafficTrends: Record<string, NodeTrafficTrend>;
   order: string[];
   failureStreak: number;
 }
@@ -43,60 +42,15 @@ export interface NodeOnlineSummary {
   online: boolean | null;
 }
 
-interface TrafficTrendSeries {
-  buffer: TrafficTrendSample[];
-  start: number;
-  size: number;
-  signature: string;
-  snapshot: TrafficTrendSample[];
-}
-
-interface NodeTrafficTrend {
-  up: TrafficTrendSeries;
-  down: TrafficTrendSeries;
-  snapshot: {
-    up: TrafficTrendSample[];
-    down: TrafficTrendSample[];
-  };
-}
-
 const LIVE_STATUS_REFRESH_INTERVAL_MS = 2_000;
 const NODE_INFO_REFRESH_INTERVAL_MS = 30_000;
 // 较短超时可让 half-open 连接尽快重试。
 const LIVE_STATUS_REQUEST_TIMEOUT_MS = 8_000;
 const SCROLL_IDLE_DELAY_MS = 160;
-const TRAFFIC_TREND_SAMPLE_COUNT = 18;
-const EMPTY_TRAFFIC_TREND_SAMPLE: TrafficTrendSample = {
-  value: 0,
-  level: 0.25,
-  opacity: 0.52,
-};
-const EMPTY_TRAFFIC_TREND_SNAPSHOT = Array.from(
-  { length: TRAFFIC_TREND_SAMPLE_COUNT },
-  () => EMPTY_TRAFFIC_TREND_SAMPLE,
-);
-const EMPTY_TRAFFIC_TREND_SERIES: TrafficTrendSeries = {
-  buffer: [],
-  start: 0,
-  size: 0,
-  signature: "",
-  snapshot: EMPTY_TRAFFIC_TREND_SNAPSHOT,
-};
-const EMPTY_NODE_TRAFFIC_TREND_SNAPSHOT = {
-  up: EMPTY_TRAFFIC_TREND_SNAPSHOT,
-  down: EMPTY_TRAFFIC_TREND_SNAPSHOT,
-};
-const EMPTY_TRAFFIC_TREND: NodeTrafficTrend = {
-  up: EMPTY_TRAFFIC_TREND_SERIES,
-  down: EMPTY_TRAFFIC_TREND_SERIES,
-  snapshot: EMPTY_NODE_TRAFFIC_TREND_SNAPSHOT,
-};
-
 function emptyState(): State {
   return {
     metaByUuid: {},
     metricsByUuid: {},
-    trafficTrends: {},
     order: [],
     failureStreak: 0,
   };
@@ -264,95 +218,6 @@ function shallowEqualNodeInfo(a: NodeInfo, b: NodeInfo) {
   );
 }
 
-function materializeTrafficTrendSnapshot(
-  buffer: TrafficTrendSample[],
-  start: number,
-  size: number,
-) {
-  if (size <= 0) return EMPTY_TRAFFIC_TREND_SNAPSHOT;
-
-  const snapshot = new Array<TrafficTrendSample>(TRAFFIC_TREND_SAMPLE_COUNT);
-  const padding = TRAFFIC_TREND_SAMPLE_COUNT - size;
-
-  for (let i = 0; i < padding; i++) {
-    snapshot[i] = EMPTY_TRAFFIC_TREND_SAMPLE;
-  }
-
-  for (let i = 0; i < size; i++) {
-    snapshot[padding + i] = buffer[(start + i) % TRAFFIC_TREND_SAMPLE_COUNT]!;
-  }
-
-  return snapshot;
-}
-
-function updateTrafficTrendSeries(
-  prevSeries: TrafficTrendSeries,
-  value: number,
-  updatedAt: number,
-  online: boolean | null,
-) {
-  if (online === false) {
-    if (!prevSeries.signature && prevSeries.size === 0) {
-      return { series: prevSeries, changed: false };
-    }
-    return { series: EMPTY_TRAFFIC_TREND_SERIES, changed: true };
-  }
-
-  const safeValue = Number.isFinite(value) && value > 0 ? value : 0;
-  const signature = `${updatedAt || 0}:${safeValue}`;
-  if (signature === prevSeries.signature) {
-    return { series: prevSeries, changed: false };
-  }
-
-  let visibleMax = safeValue > 0 ? safeValue : 1;
-  for (let i = 0; i < prevSeries.size; i++) {
-    const sample = prevSeries.buffer[(prevSeries.start + i) % TRAFFIC_TREND_SAMPLE_COUNT];
-    if (sample && sample.value > visibleMax) {
-      visibleMax = sample.value;
-    }
-  }
-
-  const level = safeValue > 0 ? Math.max(0.2, Math.min(1, safeValue / visibleMax)) : 0.25;
-  const nextSample: TrafficTrendSample = {
-    value: safeValue,
-    level,
-    opacity: safeValue > 0 ? 0.4 + level * 0.48 : 0.52,
-  };
-
-  const buffer = new Array<TrafficTrendSample>(TRAFFIC_TREND_SAMPLE_COUNT);
-  const nextSize =
-    prevSeries.size < TRAFFIC_TREND_SAMPLE_COUNT
-      ? prevSeries.size + 1
-      : TRAFFIC_TREND_SAMPLE_COUNT;
-  const nextStart =
-    prevSeries.size < TRAFFIC_TREND_SAMPLE_COUNT
-      ? prevSeries.start
-      : (prevSeries.start + 1) % TRAFFIC_TREND_SAMPLE_COUNT;
-  const insertIndex =
-    prevSeries.size < TRAFFIC_TREND_SAMPLE_COUNT
-      ? (prevSeries.start + prevSeries.size) % TRAFFIC_TREND_SAMPLE_COUNT
-      : prevSeries.start;
-
-  if (prevSeries.size > 0) {
-    for (let i = 0; i < prevSeries.size; i++) {
-      buffer[(prevSeries.start + i) % TRAFFIC_TREND_SAMPLE_COUNT] =
-        prevSeries.buffer[(prevSeries.start + i) % TRAFFIC_TREND_SAMPLE_COUNT]!;
-    }
-  }
-  buffer[insertIndex] = nextSample;
-
-  return {
-    series: {
-      buffer,
-      start: nextStart,
-      size: nextSize,
-      signature,
-      snapshot: materializeTrafficTrendSnapshot(buffer, nextStart, nextSize),
-    },
-    changed: true,
-  };
-}
-
 let state: State = emptyState();
 const visibleNodeListeners = new Set<Listener>();
 const allNodesListeners = new Set<Listener>();
@@ -361,7 +226,6 @@ const nodeOnlineSummaryListeners = new Set<Listener>();
 const storeStatusListeners = new Set<Listener>();
 const nodeMetaListeners = new Map<string, Set<Listener>>();
 const nodeMetricsListeners = new Map<string, Set<Listener>>();
-const trafficTrendListeners = new Map<string, Set<Listener>>();
 let storeVersion = 0;
 let visibleNodeUuidsSnapshot: string[] = [];
 let visibleNodeUuidsSnapshotVersion = -1;
@@ -387,7 +251,6 @@ let refreshDeferredWhileScrolling = false;
 interface CommitTouches {
   meta?: Iterable<string>;
   metrics?: Iterable<string>;
-  trafficTrends?: Iterable<string>;
   nodeList?: boolean;
   allNodes?: boolean;
   storeStatus?: boolean;
@@ -446,7 +309,6 @@ function commit(next: State, touches: CommitTouches = {}) {
   if (touches.metrics) {
     emitMappedListeners(nodeMetricsListeners, touches.metrics);
   }
-  if (touches.trafficTrends) emitMappedListeners(trafficTrendListeners, touches.trafficTrends);
 }
 
 function markScrollActivity() {
@@ -615,10 +477,8 @@ function normalizeRealtime(
 
 function applyLatestStatus(records: Record<string, unknown>) {
   const touchedMetrics = new Set<string>();
-  const touchedTrafficTrends = new Set<string>();
   // 安静 tick 不克隆整个索引。
   let nextMetricsByUuid = state.metricsByUuid;
-  let nextTrafficTrends = state.trafficTrends;
 
   for (const uuid of state.order) {
     const meta = state.metaByUuid[uuid];
@@ -639,41 +499,11 @@ function applyLatestStatus(records: Record<string, unknown>) {
       touchedMetrics.add(uuid);
     }
 
-    const prevTrend = state.trafficTrends[uuid] ?? EMPTY_TRAFFIC_TREND;
-    const nextUp = updateTrafficTrendSeries(
-      prevTrend.up,
-      merged.netUp,
-      merged.updatedAt,
-      merged.online,
-    );
-    const nextDown = updateTrafficTrendSeries(
-      prevTrend.down,
-      merged.netDown,
-      merged.updatedAt,
-      merged.online,
-    );
-
-    if (nextUp.changed || nextDown.changed) {
-      if (nextTrafficTrends === state.trafficTrends) {
-        nextTrafficTrends = { ...state.trafficTrends };
-      }
-      nextTrafficTrends[uuid] = {
-        up: nextUp.series,
-        down: nextDown.series,
-        snapshot: {
-          up: nextUp.series.snapshot,
-          down: nextDown.series.snapshot,
-        },
-      };
-      touchedTrafficTrends.add(uuid);
-    }
   }
 
   return {
     nextMetricsByUuid,
-    nextTrafficTrends,
     touchedMetrics: [...touchedMetrics],
-    touchedTrafficTrends: [...touchedTrafficTrends],
   };
 }
 
@@ -740,10 +570,6 @@ async function performNodeInfoSync() {
       }
     }
 
-    const trafficTrends = Object.fromEntries(
-      order.map((uuid) => [uuid, state.trafficTrends[uuid] ?? EMPTY_TRAFFIC_TREND]),
-    );
-
     const nodeListChanged =
       orderChanged ||
       [...touchedMeta].some((uuid) => {
@@ -762,12 +588,10 @@ async function performNodeInfoSync() {
           order,
           metaByUuid,
           metricsByUuid,
-          trafficTrends,
         },
         {
           meta: touchedMeta,
           metrics: touchedMetrics,
-          // traffic trend 只由 refreshLatestStatus 改动;syncNodeInfo 原样带过来,这里无需通知。
           nodeList: nodeListChanged,
           allNodes: orderChanged || touchedMeta.size > 0,
           storeStatus: storeStatusChanged,
@@ -808,21 +632,17 @@ async function refreshLatestStatus(nodeInfoReady?: Promise<void>) {
     if (controller.signal.aborted) return;
     const applied = applyLatestStatus(records);
     const metricsChanged = applied.touchedMetrics.length > 0;
-    const trafficTrendsChanged = applied.touchedTrafficTrends.length > 0;
     const storeStatusChanged = state.failureStreak > 0;
 
-    if (metricsChanged || trafficTrendsChanged || storeStatusChanged) {
+    if (metricsChanged || storeStatusChanged) {
       commit(
         {
           ...state,
           metricsByUuid: metricsChanged ? applied.nextMetricsByUuid : state.metricsByUuid,
-          trafficTrends:
-            trafficTrendsChanged ? applied.nextTrafficTrends : state.trafficTrends,
           failureStreak: 0,
         },
         {
           metrics: applied.touchedMetrics,
-          trafficTrends: applied.touchedTrafficTrends,
           storeStatus: storeStatusChanged,
         },
       );
@@ -1040,10 +860,6 @@ export function subscribeToNodeMetrics(uuid: string, listener: Listener): () => 
   return subscribeByKey(nodeMetricsListeners, uuid, listener);
 }
 
-export function subscribeToNodeTrafficTrend(uuid: string, listener: Listener): () => void {
-  return subscribeByKey(trafficTrendListeners, uuid, listener);
-}
-
 function subscribeByKey(
   listenersByKey: Map<string, Set<Listener>>,
   key: string,
@@ -1086,14 +902,6 @@ export function getNodeMetaSnapshot(uuid: string): NodeInfo | undefined {
 
 export function getNodeMetricsSnapshot(uuid: string): NodeMetrics | undefined {
   return state.metricsByUuid[uuid];
-}
-
-export function getNodeTrafficTrendSnapshot(uuid: string): {
-  up: TrafficTrendSample[];
-  down: TrafficTrendSample[];
-} {
-  const trend = state.trafficTrends[uuid] ?? EMPTY_TRAFFIC_TREND;
-  return trend.snapshot;
 }
 
 export function getVisibleNodeUuidsSnapshot(includeHidden = false): string[] {

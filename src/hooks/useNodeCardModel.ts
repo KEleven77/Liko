@@ -58,7 +58,7 @@ export function useNodeCardModel(
     multiPingLimit,
   }: NodeCardModelOptions = {},
 ) {
-  const { meta, metrics, trafficTrend } = useNodeCardSnapshots(uuid);
+  const { meta, metrics } = useNodeCardSnapshots(uuid);
   const {
     showCardGroup,
     fakePingForUnbound,
@@ -215,8 +215,6 @@ export function useNodeCardModel(
       latencyColor: latencyHeatColor(ping.lastValue),
       lossColor: lossHeatColor(ping.loss),
       hasRealHomepagePingBinding,
-      // 保留旧字段供外部模型消费者兼容；它表示真实配置状态。
-      hasHomepagePingBinding: hasRealHomepagePingBinding,
       shouldRenderPingBars,
       pingLoading,
       pingError,
@@ -230,14 +228,11 @@ export function useNodeCardModel(
     ],
   );
 
-  return useMemo(() => {
+  // Keep telemetry identities stable when only ping history changes.
+  const telemetry = useMemo(() => {
     if (!meta || !metrics || !metaModel) {
       return {
         node: undefined,
-        trafficTrend,
-        ping,
-        pingBuckets,
-        homepagePingLines,
       };
     }
 
@@ -268,13 +263,8 @@ export function useNodeCardModel(
 
     return {
       node: { ...meta, ...metrics },
-      trafficTrend,
-      ping,
-      pingBuckets,
-      homepagePingLines,
       traffic,
       ...metaModel,
-      ...pingModel,
       uptime: formatUptimeDays(metrics.uptime),
       loadFraction: Math.max(0, Math.min(1, metrics.load1 / loadBaseline)),
       upRate: formatByteRate(metrics.netUp),
@@ -283,13 +273,15 @@ export function useNodeCardModel(
       isOffline: metrics.online === false,
     };
   }, [
-    homepagePingLines,
     meta,
     metrics,
     metaModel,
-    pingModel,
+  ]);
+  return useMemo(() => ({
+    ...telemetry,
+    ...pingModel,
     ping,
     pingBuckets,
-    trafficTrend,
-  ]);
+    homepagePingLines,
+  }), [telemetry, pingModel, ping, pingBuckets, homepagePingLines]);
 }

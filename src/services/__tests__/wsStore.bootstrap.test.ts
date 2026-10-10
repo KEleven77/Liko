@@ -176,4 +176,36 @@ describe("parallel node bootstrap", () => {
     metadata.resolve([NodeInfoSchema.parse({ uuid: "node-a" })]);
     await vi.advanceTimersByTimeAsync(0);
   });
+
+  it("keeps unchanged metric snapshots stable and notifies only the changed node", async () => {
+    mocks.nodes.mockResolvedValue(["node-a", "node-b"].map((uuid) => NodeInfoSchema.parse({ uuid })));
+    mocks.status.mockResolvedValue({
+      "node-a": { online: true, cpu: 25, net_in: 100, net_out: 200 },
+      "node-b": { online: true, cpu: 10 },
+    });
+    const store = await import("@/services/wsStore");
+    release = store.retainStore();
+    await vi.advanceTimersByTimeAsync(0);
+    const snapshot = store.getNodeMetricsSnapshot("node-a");
+    const changed = vi.fn();
+    const unchanged = vi.fn();
+    const unsubscribeA = store.subscribeToNodeMetrics("node-a", changed);
+    const unsubscribeB = store.subscribeToNodeMetrics("node-b", unchanged);
+    try {
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(store.getNodeMetricsSnapshot("node-a")).toBe(snapshot);
+      expect(changed).not.toHaveBeenCalled();
+      mocks.status.mockResolvedValue({
+        "node-a": { online: true, cpu: 42, net_in: 300, net_out: 400 },
+        "node-b": { online: true, cpu: 10 },
+      });
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(store.getNodeMetricsSnapshot("node-a")?.cpuPct).toBe(42);
+      expect(changed).toHaveBeenCalledTimes(1);
+      expect(unchanged).not.toHaveBeenCalled();
+    } finally {
+      unsubscribeA();
+      unsubscribeB();
+    }
+  });
 });

@@ -1,13 +1,14 @@
 import { memo } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowUp, Cpu, Gauge, HardDrive, MemoryStick, ListFilter } from "lucide-react";
+import { ArrowDown, ArrowUp, Cpu, Gauge, HardDrive, MemoryStick, ListFilter, Network } from "lucide-react";
 import { clsx } from "clsx";
 import { Flag } from "@/components/ui/Flag";
 import { useNodeCardModel } from "@/hooks/useNodeCardModel";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { formatBytes } from "@/utils/format";
 import { MultiPingStatus } from "./MultiPingStatus";
+import { NodeTodayTrafficPopover } from "./NodeTodayTrafficPopover";
 import { formatCompactExpire, formatCompactPercent, formatCompactUptime } from "./nodeCardShared";
 import type { NodeInfo, NodeMetrics } from "@/types/komari";
 
@@ -59,7 +60,7 @@ function CompactGauge({
   );
 }
 
-function CompactNodeVitals({
+const CompactNodeVitals = memo(function CompactNodeVitals({
   node,
   loadFraction,
 }: {
@@ -102,18 +103,21 @@ function CompactNodeVitals({
       />
     </div>
   );
-}
+});
 
 export const CompactNodeCard = memo(function CompactNodeCard({
   uuid,
+  size = "compact",
+  showTodayTraffic = true,
 }: {
   uuid: string;
+  size?: "compact" | "large" | "mini";
   showTodayTraffic?: boolean;
 }) {
   const model = useNodeCardModel(uuid, {
     pingBucketCount: 20,
     includeMultiPing: true,
-    multiPingLimit: 6,
+    multiPingLimit: size === "mini" ? 1 : 6,
   });
   const themeSettings = useThemeSettings();
   const navigate = useNavigate();
@@ -145,9 +149,11 @@ export const CompactNodeCard = memo(function CompactNodeCard({
     loadFraction,
     osName,
   } = model;
-  const showTrafficTotal = themeSettings.isReady && themeSettings.compactShowTrafficTotal;
-  const showBilling = themeSettings.isReady && themeSettings.compactShowBilling;
-  const showUptime = themeSettings.isReady && themeSettings.compactShowUptime;
+  const isLarge = size === "large";
+  const isMini = size === "mini";
+  const showTrafficTotal = themeSettings.isReady && (size !== "compact" || themeSettings.compactShowTrafficTotal);
+  const showBilling = themeSettings.isReady && (size !== "compact" || themeSettings.compactShowBilling);
+  const showUptime = themeSettings.isReady && (size !== "compact" || themeSettings.compactShowUptime);
   // 开关关闭或节点离线时,完全跳过格式化工作。
   const uptimeLabel = showUptime && !isOffline ? formatCompactUptime(node.uptime) : "";
 
@@ -156,9 +162,9 @@ export const CompactNodeCard = memo(function CompactNodeCard({
     ...footerTags.filter((tag) => tag.label !== node.group),
   ].slice(0, 6);
   return (
-    <article className={clsx("compact-node-card preview-node-v1", isOffline && "is-offline")} onClick={openDetails}>
+    <article className={clsx("compact-node-card preview-node-v1", isLarge && "server-card is-large-layout", isMini && "mini-node-card is-mini-layout", isOffline && "is-offline")} onClick={openDetails}>
       <header className="preview-node-header">
-        <Flag region={node.region} size={24} />
+        <Flag region={node.region} size={isMini ? 20 : 24} />
         <div className="preview-node-heading">
           <Link to={`/instance/${encodeURIComponent(node.uuid)}`} className="compact-node-title" title={node.name}>{node.name}</Link>
           <span>{osName} · {node.arch || "—"}</span>
@@ -176,15 +182,16 @@ export const CompactNodeCard = memo(function CompactNodeCard({
         ))}
       </div>
       <CompactNodeVitals node={node} loadFraction={loadFraction} />
+      {isLarge && themeSettings.isReady && themeSettings.showConnections && <div className="preview-node-section-head preview-node-connections"><span><Network size={14} /> TCP {node.connectionsTcp.toLocaleString()}</span><span>UDP {node.connectionsUdp.toLocaleString()}</span></div>}
       <section className="preview-node-network">
         <div className="preview-node-section-head"><strong>网络质量</strong><span>最近 1 小时</span></div>
         <div className="preview-node-network-labels"><span>线路</span><span aria-hidden="true" /><span>延迟</span><span>丢包率</span></div>
-        <MultiPingStatus uuid={node.uuid} name={node.name} lines={homepagePingLines} density="compact" layout="table" />
+        <MultiPingStatus uuid={node.uuid} name={node.name} lines={homepagePingLines} />
       </section>
       <section className="preview-node-traffic" style={{"--compact-gauge-color": traffic.color, "--compact-gauge-fill": `${clamp01(traffic.fraction) * 100}%`} as CSSProperties}>
         <div className="preview-node-section-head"><strong className="tabular">{traffic.detail}</strong><span className="tabular">{(traffic.fraction * 100).toFixed(2)}%</span></div>
         <div className="compact-node-gauge-track" aria-hidden="true" />
-        <div className="preview-node-section-head preview-node-muted"><span>已用流量</span>{trafficResetLabel && <span>{trafficResetLabel}</span>}</div>
+        <div className="preview-node-section-head preview-node-muted"><span className="preview-node-traffic-label">已用流量{size !== "compact" && showTodayTraffic && <NodeTodayTrafficPopover uuid={uuid} />}</span>{trafficResetLabel && <span>{trafficResetLabel}</span>}</div>
       </section>
       <footer className="preview-node-footer">
         <div className="preview-node-footer-summary">
