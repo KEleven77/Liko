@@ -481,12 +481,12 @@
 
 /* Group tags keep their existing tokens; ordinary tags follow their text hue. */
 .preview-node-tags .compact-node-tag[style] {
-  --tag-bg: hsl(var(--tag-hue) 62% 48% / 0.13);
-  --tag-fg: hsl(var(--tag-hue) 58% 32%);
+  --tag-bg: hsl(var(--tag-hue) 82% 44% / 0.17);
+  --tag-fg: hsl(var(--tag-hue) 76% 30%);
 }
 :root[data-appearance="dark"] .preview-node-tags .compact-node-tag[style] {
-  --tag-bg: hsl(var(--tag-hue) 62% 65% / 0.16);
-  --tag-fg: hsl(var(--tag-hue) 68% 76%);
+  --tag-bg: hsl(var(--tag-hue) 82% 58% / 0.22);
+  --tag-fg: hsl(var(--tag-hue) 88% 72%);
 }
 @media (max-width: 350px) {
   .preview-node-v1 { padding: 10px 12px; gap: 10px; }

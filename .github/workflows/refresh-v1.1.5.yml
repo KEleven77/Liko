@@ -1,0 +1,58 @@
+name: Refresh Liko v1.1.5 once
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/refresh-v1.1.5.yml]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: refresh-liko-v1.1.5
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      ORIGINAL_TAG_SHA: ab3d4a115cdc45e057f02fe0cb0936bde73ee386
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Guard this single-version refresh
+        run: |
+          test "$GH_REPO" = KEleven77/Liko
+          node --input-type=module -e 'import fs from "node:fs"; for (const file of ["package.json", "komari-theme.json"]) { if (JSON.parse(fs.readFileSync(file)).version !== "1.1.5") process.exit(1); }'
+          current=$(gh api repos/KEleven77/Liko/git/ref/tags/v1.1.5 --jq .object.sha)
+          test "$current" = "$ORIGINAL_TAG_SHA"
+          test "$(gh release view v1.1.5 --json isDraft --jq .isDraft)" = false
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run release
+      - name: Validate and retain new package
+        run: unzip -tq Komari-Theme-Liko-v1.1.5.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: refreshed-v1.1.5-package
+          path: Komari-Theme-Liko-v1.1.5.zip
+      - name: Keep previous package for recovery
+        run: gh release download v1.1.5 --pattern Komari-Theme-Liko-v1.1.5.zip --dir previous-release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: previous-v1.1.5-package
+          path: previous-release/Komari-Theme-Liko-v1.1.5.zip
+      - name: Move only the v1.1.5 tag with a lease
+        run: git push --force-with-lease=refs/tags/v1.1.5:$ORIGINAL_TAG_SHA origin "$GITHUB_SHA:refs/tags/v1.1.5"
+      - name: Replace package and release notes
+        run: |
+          gh release upload v1.1.5 Komari-Theme-Liko-v1.1.5.zip --clobber
+          gh release edit v1.1.5 --notes-file .github/release-notes/v1.1.5.md --target "$GITHUB_SHA"
