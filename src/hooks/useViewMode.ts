@@ -7,10 +7,10 @@ import { isNodeViewMode, type NodeViewMode } from "@/utils/themeSettings";
 const DESKTOP_OVERRIDE_KEY = "komaritheme:node-view-mode-session:desktop";
 const MOBILE_OVERRIDE_KEY = "komaritheme:node-view-mode-session:mobile";
 export const MOBILE_VIEW_MODE_QUERY = MOBILE_VIEWPORT_QUERY;
-// 快捷切换按钮的循环顺序：大卡 → 小卡 → 迷你 → 列表 → 大卡……
-const VIEW_MODE_CYCLE: readonly NodeViewMode[] = ["large", "compact", "mini", "list"];
+// 快捷切换按钮的循环顺序：标准卡片 → 迷你 → 列表 → 标准卡片。
+const VIEW_MODE_CYCLE: readonly NodeViewMode[] = ["compact", "mini", "list"];
 // 列表档天生不适合窄屏,仅桌面可用:移动端从循环里剔除,且默认值解析成 list 时兜底回 compact。
-const MOBILE_VIEW_MODES: readonly NodeViewMode[] = ["large", "compact", "mini"];
+const MOBILE_VIEW_MODES: readonly NodeViewMode[] = ["compact", "mini"];
 
 export type ViewModeDevice = "desktop" | "mobile";
 

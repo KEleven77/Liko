@@ -25,7 +25,7 @@ import {
 } from "@/utils/pingTasks";
 
 export type Appearance = "system" | "light" | "dark";
-export type NodeViewMode = "large" | "compact" | "mini" | "list";
+export type NodeViewMode = "compact" | "mini" | "list";
 export type HomepagePingDisplayMode = "bars" | "sparkline";
 export const CARD_CURRENCIES = ["original", "CNY", "USD", "HKD", "EUR", "GBP", "JPY", "TWD", "CAD", "AUD", "SGD"] as const;
 export type CardCurrency = (typeof CARD_CURRENCIES)[number];
@@ -68,7 +68,6 @@ export interface ResolvedThemeSettings {
   compactShowTrafficTotal: boolean;
   compactShowBilling: boolean;
   compactShowUptime: boolean;
-  showConnections: boolean;
   showTodayTrafficPopover: boolean;
   hiddenNodes: string[];
   costIgnoredNodes: string[];
@@ -79,7 +78,7 @@ export interface ResolvedThemeSettings {
 
 export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   defaultAppearance: "system",
-  desktopNodeViewMode: "large",
+  desktopNodeViewMode: "compact",
   mobileNodeViewMode: "compact",
   enableAdminButton: true,
   showPingChart: true,
@@ -110,7 +109,6 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   compactShowTrafficTotal: true,
   compactShowBilling: true,
   compactShowUptime: true,
-  showConnections: false,
   showTodayTrafficPopover: true,
   hiddenNodes: [],
   costIgnoredNodes: [],
@@ -131,7 +129,7 @@ function normalizeAppearance(
 }
 
 export function isNodeViewMode(value: unknown): value is NodeViewMode {
-  return value === "large" || value === "compact" || value === "mini" || value === "list";
+  return value === "compact" || value === "mini" || value === "list";
 }
 
 function normalizeNodeViewMode(
@@ -139,7 +137,7 @@ function normalizeNodeViewMode(
   fallback: NodeViewMode,
 ): NodeViewMode {
   if (isNodeViewMode(value)) return value;
-  // 未知旧字符串统一落到小卡，避免升级后出现无选中项。
+  // 已移除的大卡片及未知旧字符串统一迁移到标准卡片。
   return typeof value === "string" && value.length > 0 ? "compact" : fallback;
 }
 
@@ -223,8 +221,6 @@ export function normalizeThemeSettings(
     compactShowTrafficTotal: enabledUnlessFalse(settings?.compactShowTrafficTotal),
     compactShowBilling: enabledUnlessFalse(settings?.compactShowBilling),
     compactShowUptime: enabledUnlessFalse(settings?.compactShowUptime),
-    // 默认关闭(需手动开启):连接数是个小众指标,很多 agent 也不上报,所以只在显式启用时才显示。
-    showConnections: settings?.showConnections === true,
     showTodayTrafficPopover: enabledUnlessFalse(settings?.showTodayTrafficPopover),
     hiddenNodes: normalizeNodeIdentityList(settings?.hiddenNodes),
     costIgnoredNodes: normalizeCostIgnoredNodes(settings?.costIgnoredNodes),

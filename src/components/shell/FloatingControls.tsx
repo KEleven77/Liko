@@ -12,7 +12,6 @@ import {
   Palette,
   Settings,
   SlidersHorizontal,
-  Square,
   Sun,
   Moon,
 } from "lucide-react";
@@ -33,9 +32,8 @@ const MetricColorPicker = lazy(() =>
 
 // 悬浮球切换按钮展示"下一档"的图标/文案(点击后会切到的视图),而不是当前视图——
 // 与 ThemeManage 里 NODE_VIEW_MODE_OPTIONS 的图标语义保持一致。
-const VIEW_MODE_META: Record<NodeViewMode, { icon: typeof Square; label: string }> = {
-  large: { icon: Square, label: "大视图" },
-  compact: { icon: LayoutGrid, label: "小视图" },
+const VIEW_MODE_META: Record<NodeViewMode, { icon: typeof LayoutGrid; label: string }> = {
+  compact: { icon: LayoutGrid, label: "标准卡片" },
   mini: { icon: Grid3x3, label: "迷你视图" },
   list: { icon: List, label: "列表视图" },
 };
@@ -87,8 +85,8 @@ export function FloatingControls({
     setAppearance(NEXT_APPEARANCE[appearance] ?? "system");
   };
 
-  // 只要不在最宽松的大卡默认态,就视为"已切换"，按钮保持高亮。
-  const isReducedView = mode !== "large";
+  // 离开默认标准卡片视图时，按钮保持高亮。
+  const isReducedView = mode !== "compact";
   useEffect(() => {
     onExpandedChange?.(false);
     return () => onExpandedChange?.(false);

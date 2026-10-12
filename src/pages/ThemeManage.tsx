@@ -17,7 +17,6 @@ import {
   Activity,
   Save,
   Search,
-  Square,
   Sun,
   SunMoon,
 } from "lucide-react";
@@ -82,8 +81,7 @@ const APPEARANCE_OPTIONS = [
   { value: "dark", label: "深色", icon: Moon },
 ] as const;
 const NODE_VIEW_MODE_OPTIONS = [
-  { value: "large", label: "大卡片", icon: Square },
-  { value: "compact", label: "小卡片", icon: LayoutGrid },
+  { value: "compact", label: "标准卡片", icon: LayoutGrid },
   { value: "mini", label: "迷你卡片", icon: Grid3x3 },
   { value: "list", label: "列表", icon: List },
 ] as const;
@@ -214,7 +212,6 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     compactShowTrafficTotal: settings.compactShowTrafficTotal,
     compactShowBilling: settings.compactShowBilling,
     compactShowUptime: settings.compactShowUptime,
-    showConnections: settings.showConnections,
     showTodayTrafficPopover: settings.showTodayTrafficPopover,
     hiddenNodes: settings.hiddenNodes,
     costIgnoredNodes: settings.costIgnoredNodes,
@@ -1333,7 +1330,7 @@ export function ThemeManage() {
             <InstancePanel
               kicker="卡片"
               title="卡片展示内容"
-              description="定制大卡片、小卡片和列表模式下呈现的具体指标。"
+              description="定制标准卡片、迷你卡片和列表模式下呈现的具体指标。"
               aside={<Rows3 size={16} />}
             >
               <div className="grid gap-3 md:grid-cols-2">
@@ -1346,30 +1343,23 @@ export function ThemeManage() {
                 />
                 <ToggleRow
                   field="compactShowTrafficTotal"
-                  title="小卡片显示累计流量"
+                  title="标准卡片显示累计流量"
                   desc="在紧凑视图中展示月度或累计出入站流量。"
                   checked={draft.compactShowTrafficTotal}
                   onPatch={patch}
                 />
                 <ToggleRow
                   field="compactShowBilling"
-                  title="小卡片显示计费周期"
+                  title="标准卡片显示计费周期"
                   desc="在紧凑视图中保留周期标注。"
                   checked={draft.compactShowBilling}
                   onPatch={patch}
                 />
                 <ToggleRow
                   field="compactShowUptime"
-                  title="小卡片显示在线时长"
+                  title="标准卡片显示在线时长"
                   desc="在紧凑视图中展示系统运行时间。"
                   checked={draft.compactShowUptime}
-                  onPatch={patch}
-                />
-                <ToggleRow
-                  field="showConnections"
-                  title="显示 TCP/UDP 连接数"
-                  desc="在卡片网络区域标注实时活跃连接统计。"
-                  checked={draft.showConnections}
                   onPatch={patch}
                 />
                 <ToggleRow

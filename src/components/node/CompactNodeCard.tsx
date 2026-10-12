@@ -1,7 +1,7 @@
 import { memo } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowUp, Cpu, Gauge, HardDrive, MemoryStick, ListFilter, Network } from "lucide-react";
+import { ArrowDown, ArrowUp, Cpu, Gauge, HardDrive, MemoryStick, ListFilter } from "lucide-react";
 import { clsx } from "clsx";
 import { Flag } from "@/components/ui/Flag";
 import { useNodeCardModel } from "@/hooks/useNodeCardModel";
@@ -111,7 +111,7 @@ export const CompactNodeCard = memo(function CompactNodeCard({
   showTodayTraffic = true,
 }: {
   uuid: string;
-  size?: "compact" | "large" | "mini";
+  size?: "compact" | "mini";
   showTodayTraffic?: boolean;
 }) {
   const model = useNodeCardModel(uuid, {
@@ -149,7 +149,6 @@ export const CompactNodeCard = memo(function CompactNodeCard({
     loadFraction,
     osName,
   } = model;
-  const isLarge = size === "large";
   const isMini = size === "mini";
   const showTrafficTotal = themeSettings.isReady && (size !== "compact" || themeSettings.compactShowTrafficTotal);
   const showBilling = themeSettings.isReady && (size !== "compact" || themeSettings.compactShowBilling);
@@ -162,7 +161,7 @@ export const CompactNodeCard = memo(function CompactNodeCard({
     ...footerTags.filter((tag) => tag.label !== node.group),
   ].slice(0, 6);
   return (
-    <article className={clsx("compact-node-card preview-node-v1", isLarge && "server-card is-large-layout", isMini && "mini-node-card is-mini-layout", isOffline && "is-offline")} onClick={openDetails}>
+    <article className={clsx("compact-node-card preview-node-v1", isMini && "mini-node-card is-mini-layout", isOffline && "is-offline")} onClick={openDetails}>
       <header className="preview-node-header">
         <Flag region={node.region} size={isMini ? 20 : 24} />
         <div className="preview-node-heading">
@@ -182,7 +181,6 @@ export const CompactNodeCard = memo(function CompactNodeCard({
         ))}
       </div>
       <CompactNodeVitals node={node} loadFraction={loadFraction} />
-      {isLarge && themeSettings.isReady && themeSettings.showConnections && <div className="preview-node-section-head preview-node-connections"><span><Network size={14} /> TCP {node.connectionsTcp.toLocaleString()}</span><span>UDP {node.connectionsUdp.toLocaleString()}</span></div>}
       <section className="preview-node-network">
         <div className="preview-node-section-head"><strong>网络质量</strong><span>最近 1 小时</span></div>
         <div className="preview-node-network-labels"><span>线路</span><span aria-hidden="true" /><span>延迟</span><span>丢包率</span></div>

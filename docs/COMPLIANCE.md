@@ -29,6 +29,12 @@
 - Glassmorphism 仓库 LICENSE 为 MIT，原文保存在 `public/licenses/glassmorphism-MIT.txt`。借鉴 Sparkline 历史展示与时段查看思路，使用既有 Canvas 实现，未复制其源码或素材。
 - 上述许可原文、来源与修改说明随本次 ZIP 保留；这不表示已完成整个项目的逐行授权或素材审查。原有 SAO/Lumina 及品牌素材核查缺口仍未被这些参考项目的许可证覆盖。
 
+### 2026-10-13 / 1.1.4 参考记录补充
+
+- 补充 sanrokamlan-prog/komari-theme-Glassmorphism 的 v3.4.1 参考记录，提交 `0b1d9b75508f68a5501c443b4eaae405acc7e334`。仅借鉴新版三网曲线的细线与渐变填充样式，沿用 Liko 的 Canvas 和数据模型实现，不移植其布局或素材。
+- 核对该版本 LICENSE 与随包 `public/licenses/glassmorphism-MIT.txt` 原文一致，保留 Tony Liu 的版权声明及完整 MIT 许可；README、第三方声明和发布说明补充分支维护者及原作者致谢。
+- 此次仅补充该参考版本的来源记录，未重新审查整个项目，也未消除上文列出的授权缺口。
+
 ### 原有措施
 
 - 在 README 明确个人二次开发、自用测试及 AI 开发方式，区分维护者与上游权利人。

@@ -13,16 +13,14 @@ describe("view mode device contracts", () => {
   });
 
   it("cycles every desktop view in order", () => {
-    expect(getNextViewMode("large", "desktop")).toBe("compact");
     expect(getNextViewMode("compact", "desktop")).toBe("mini");
     expect(getNextViewMode("mini", "desktop")).toBe("list");
-    expect(getNextViewMode("list", "desktop")).toBe("large");
+    expect(getNextViewMode("list", "desktop")).toBe("compact");
   });
 
   it("cycles mobile views without exposing the desktop-only list view", () => {
-    expect(getNextViewMode("large", "mobile")).toBe("compact");
     expect(getNextViewMode("compact", "mobile")).toBe("mini");
-    expect(getNextViewMode("mini", "mobile")).toBe("large");
+    expect(getNextViewMode("mini", "mobile")).toBe("compact");
     expect(getNextViewMode("list", "mobile")).toBe("mini");
   });
 });

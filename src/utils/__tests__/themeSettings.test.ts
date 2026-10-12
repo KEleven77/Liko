@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { normalizeThemeSettings } from "@/utils/themeSettings";
 
 describe("normalizeThemeSettings", () => {
+  it("migrates retired large card settings to standard cards", () => {
+    const settings = normalizeThemeSettings({
+      desktopNodeViewMode: "large",
+      mobileNodeViewMode: "large",
+    });
+    expect(settings.desktopNodeViewMode).toBe("compact");
+    expect(settings.mobileNodeViewMode).toBe("compact");
+    expect(normalizeThemeSettings({}).desktopNodeViewMode).toBe("compact");
+  });
   it("defaults card currency to original and accepts supported currencies", () => {
     expect(normalizeThemeSettings({}).cardCurrency).toBe("original");
     expect(normalizeThemeSettings({ cardCurrency: "USD" }).cardCurrency).toBe("USD");

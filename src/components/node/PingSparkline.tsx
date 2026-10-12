@@ -42,6 +42,16 @@ export const PingSparkline = memo(function PingSparkline({ buckets, name, color,
       marker: safeCanvasColor("var(--text-tertiary)"),
     };
   }, [color, redrawKey]);
+  const pathCache = useRef<{
+    geometry: typeof geometry;
+    palette: typeof palette;
+    ctx: CanvasRenderingContext2D;
+    width: number;
+    height: number;
+    line: Path2D;
+    area: Path2D;
+    gradient: CanvasGradient;
+  } | null>(null);
   const activeIndex = activeInspection?.index ?? null;
   const bucket = activeIndex == null ? null : buckets[activeIndex];
   const tooltip = bucket ? formatCombinedPingBucketTooltip(bucket) : null;
@@ -77,20 +87,52 @@ export const PingSparkline = memo(function PingSparkline({ buckets, name, color,
     paintedWidth.current = width;
     const { points, isolated, lossMarks, hasSamples } = geometry;
     const tone = palette.line;
+    // Inspection only changes the marker; reuse paths and gradient until data,
+    // dimensions or theme changes. Each missing period still breaks the curve.
+    let cached = pathCache.current;
+    if (!cached || cached.geometry !== geometry || cached.palette !== palette
+      || cached.ctx !== ctx || cached.width !== width || cached.height !== height) {
+      const line = new Path2D();
+      const area = new Path2D();
+      let segmentStart: number | null = null;
+      let segmentEnd = 0;
+      const finish = () => {
+        if (segmentStart == null) return;
+        area.lineTo(segmentEnd, height - 2);
+        area.lineTo(segmentStart, height - 2);
+        area.closePath();
+        segmentStart = null;
+      };
+      points.forEach(({ x, y }) => {
+        if (y == null) { finish(); return; }
+        const px = x * width;
+        if (segmentStart == null) {
+          segmentStart = px;
+          line.moveTo(px, y);
+          area.moveTo(px, y);
+        } else {
+          line.lineTo(px, y);
+          area.lineTo(px, y);
+        }
+        segmentEnd = px;
+      });
+      finish();
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, tone);
+      gradient.addColorStop(1, "transparent");
+      cached = { geometry, palette, ctx, width, height, line, area, gradient };
+      pathCache.current = cached;
+    }
+    ctx.fillStyle = cached.gradient;
+    ctx.globalAlpha = 0.28;
+    ctx.fill(cached.area);
+    ctx.globalAlpha = 1;
     ctx.strokeStyle = tone;
     ctx.fillStyle = tone;
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 1.35;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    ctx.beginPath();
-    let connected = false;
-    points.forEach(({ x, y }) => {
-      if (y == null) { connected = false; return; }
-      if (connected) ctx.lineTo(x * width, y);
-      else ctx.moveTo(x * width, y);
-      connected = true;
-    });
-    ctx.stroke();
+    ctx.stroke(cached.line);
     // Isolated valid samples remain visible without bridging missing periods.
     isolated.forEach(({ x, y }) => {
       ctx.beginPath();

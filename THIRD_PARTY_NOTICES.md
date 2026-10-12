@@ -16,6 +16,11 @@ Liko 是个人维护的二次开发分支，不代表上游项目官方版本。
 - [towersip/komari-theme-Glassmorphism](https://github.com/towersip/komari-theme-Glassmorphism)：参考 Sparkline 延迟历史展示和时段查看交互，未复制其源码或素材；用既有 Canvas 和历史数据模型实现。其 MIT 原文保存在 `public/licenses/glassmorphism-MIT.txt`，包括原版权声明，随包保留供来源核查。
 - SAO、Lumina、LuminaPlus 是已有继承链，不因本次参考关系而替换署名或整体重新授权。现有授权待核实事项仍保留在 `COMPLIANCE.md`。
 
+## 1.1.4 新增参考记录
+
+- [sanrokamlan-prog/komari-theme-Glassmorphism](https://github.com/sanrokamlan-prog/komari-theme-Glassmorphism)：参考 [v3.4.1](https://github.com/sanrokamlan-prog/komari-theme-Glassmorphism/releases/tag/v3.4.1)，提交 `0b1d9b75508f68a5501c443b4eaae405acc7e334`。仅借鉴新版三网曲线的细线和渐变填充样式，使用 Liko 既有 Canvas 与历史数据模型实现，不移植其三网布局、状态标记或其他素材。
+- 该版本 LICENSE 为 MIT，版权声明为 `Copyright (c) 2025 Tony Liu (tonyliuzj, tony-liu.com)`，与现有 `public/licenses/glassmorphism-MIT.txt` 原文一致；完整许可继续随 `dist/licenses/` 发布。感谢分支维护者和原作者，参考关系不表示官方合作或背书，也不替代现有继承链的授权核查。
+
 ## 运行时依赖许可
 
 锁文件中的运行时包包含 React、React DOM、React Router、TanStack Query、clsx、cookie、scheduler、set-cookie-parser、uPlot、uplot-react、Zod、Lucide React 和 Inter 字体包。

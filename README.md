@@ -26,12 +26,21 @@
 - 延迟与丢包率并排展示，分别对应历史指标条。
 - 主题设置的「延迟」分组可选择「指标条」或「Sparkline」，默认保留指标条。Sparkline 仅将延迟历史指标条替换为趋势线，任务名、数值、丢包率和行高保持不变；支持时段提示、键盘查看和点击网络弹窗，缺失数据保留断点。
 - Sparkline 展示与时段查看交互参考 [towersip/komari-theme-Glassmorphism](https://github.com/towersip/komari-theme-Glassmorphism)，在本项目现有 Canvas 和历史数据模型上独立实现，未复制该项目源代码或素材。
-- 居中 Sparkline 缓存点位和配色，悬停与缩放复用点位；主题设置移除不可达的旧任务绑定编辑器，但仍保留旧绑定配置的读取和保存兼容性。
+- Sparkline 缓存点位和配色，在数据、尺寸与主题未变化时复用曲线路径及渐变，减少查看历史时的重复计算；主题设置移除不可达的旧任务绑定编辑器，但仍保留旧绑定配置的读取和保存兼容性。
 - 点击网络区域打开服务器网络弹窗，支持时间范围及可点击彩色图例。
 - 网络弹窗并行加载图表代码与数据，先展示延迟和丢包记录，再补充后台统计；重复打开或切回已加载时段复用缓存。
 - 无数据、报错和加载中仍可切换时间，空数据可刷新；自定义小时允许清空编辑，提交时校验范围。
 - 网络弹窗最大宽度 1120px，支持移动端自适应。
 - 压缩首页监控总览布局，改进设置保存反馈。
+
+## 1.1.4 更新与参考来源
+
+- 移除大卡片模式，将「小卡片」统一更名为「标准卡片」。桌面保留标准卡片、迷你卡片和列表，移动端保留标准卡片和迷你卡片；旧大卡片配置自动回退为标准卡片。
+- 仅参考 [sanrokamlan-prog/komari-theme-Glassmorphism v3.4.1](https://github.com/sanrokamlan-prog/komari-theme-Glassmorphism/releases/tag/v3.4.1) 新版三网曲线的细线与渐变填充样式。沿用 Liko 的 Canvas 和数据模型实现，不移植其三网布局、状态标记或其他毛玻璃样式；任务名称、数值、丢包率与行高保持不变，缺失数据仍保留断点。
+- 清理废弃大卡片组件、专属布局与连接数开关，移除重复的 Sparkline CSS；保留总览连接数统计。
+- 缓存曲线路径与渐变，查看历史时复用绘制准备结果；数据、尺寸或主题变化时重新生成。保留键盘查看、时段提示和点击网络弹窗功能。
+
+本次曲线参考版本为 `v3.4.1`，提交 `0b1d9b75508f68a5501c443b4eaae405acc7e334`。感谢该分支维护者和 Glassmorphism 原作者提供的参考。原版权声明及 MIT 许可原文继续随包保留，见 [第三方声明](THIRD_PARTY_NOTICES.md)。完整更新说明见 [1.1.4 发布说明](.github/release-notes/v1.1.4.md)。
 
 ## 1.1.0 更新与参考来源
 
@@ -215,6 +224,7 @@ Liko 保留上游项目的历史和来源说明。下方为原项目文档，SAO
 - **[WAOR/Komari-Theme-SAO](https://github.com/WAOR/Komari-Theme-SAO)**：Liko 的直接代码上游，提供工程结构、主题设置、节点数据及监控功能基础。
 - **[nuomiiiii/Lite-theme](https://github.com/nuomiiiii/Lite-theme)**：参考其服务器卡片信息层次、冷白/蓝黑配色、资源与费用排布，以及二级资源详情、网络监测和探测任务总览布局，并按 Liko 的组件与数据接口适配。
 - **[towersip/komari-theme-Glassmorphism](https://github.com/towersip/komari-theme-Glassmorphism)**：参考 Sparkline 延迟趋势与按时段查看历史数据的交互思路；使用 Liko 现有 Canvas 与历史数据模型实现，未复制其源码或素材。
+- **[sanrokamlan-prog/komari-theme-Glassmorphism](https://github.com/sanrokamlan-prog/komari-theme-Glassmorphism)**：1.1.4 仅参考其 v3.4.1 新版三网曲线的细线及渐变填充样式，感谢该分支维护者与 Glassmorphism 原作者 Tony Liu 的开源贡献；不移植其他布局或素材。
 - **[stqfdyr/komari-theme-Lumina](https://github.com/stqfdyr/komari-theme-Lumina)**：初代优雅主题开创者。
 - **[shanyang242/Komari-Theme-LuminaPlus](https://github.com/shanyang242/Komari-Theme-LuminaPlus)**：出色的功能增强分支与架构设计。
 - **[volcano-1025/CFSM-Theme-LuminaPlus](https://github.com/volcano-1025/CFSM-Theme-LuminaPlus)**：CFSM 平台的早期移植探索。

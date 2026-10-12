@@ -207,14 +207,7 @@
   contain-intrinsic-size: auto 460px;
 }
 
-.preview-node-v1.is-large-layout {
-  padding: 18px;
-  gap: 15px;
-}
-.is-large-layout .preview-node-heading .compact-node-title { font-size: 19px; }
-.is-large-layout .preview-node-rate > strong { font-size: 32px; }
-.preview-node-traffic-label,
-.preview-node-connections > span { display: inline-flex; align-items: center; gap: 6px; }
+.preview-node-traffic-label { display: inline-flex; align-items: center; gap: 6px; }
 
 .grid:has(> div > .preview-node-v1) {
   align-items: stretch;

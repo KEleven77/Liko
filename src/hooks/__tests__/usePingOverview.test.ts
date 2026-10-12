@@ -200,13 +200,13 @@ describe("homepage ping polling selection", () => {
   });
 
   it("requests multi-ping across all views when multi-ping is enabled and configured", () => {
-    expect(resolveHomepagePingRequestMode("large", true, [1, 2, 3])).toBe("multi");
+    expect(resolveHomepagePingRequestMode("compact", true, [1, 2, 3])).toBe("multi");
     expect(resolveHomepagePingRequestMode("compact", true, [1, 2, 3])).toBe("multi");
     expect(resolveHomepagePingRequestMode("mini", true, [1, 2, 3])).toBe("multi");
     expect(resolveHomepagePingRequestMode("list", true, [1, 2, 3])).toBe("multi");
-    expect(resolveHomepagePingRequestMode("large", false, [1, 2, 3])).toBe("single");
-    expect(resolveHomepagePingRequestMode("large", true, [1, 2])).toBe("multi");
-    expect(resolveHomepagePingRequestMode("large", true, [])).toBe("single");
+    expect(resolveHomepagePingRequestMode("compact", false, [1, 2, 3])).toBe("single");
+    expect(resolveHomepagePingRequestMode("compact", true, [1, 2])).toBe("multi");
+    expect(resolveHomepagePingRequestMode("compact", true, [])).toBe("single");
   });
 
   it("retains the previous line when one multi-ping task fails", async () => {

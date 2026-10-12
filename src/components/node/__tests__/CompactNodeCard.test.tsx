@@ -10,7 +10,7 @@ vi.mock("@/hooks/useThemeSettings", () => ({ useThemeSettings: () => ({ isReady:
 describe("card task limits", () => {
   beforeEach(() => model.mockClear());
 
-  it.each(["mini", "compact", "large"] as const)("limits %s card tasks before deriving buckets", (size) => {
+  it.each(["mini", "compact"] as const)("limits %s card tasks before deriving buckets", (size) => {
     renderToStaticMarkup(<MemoryRouter><CompactNodeCard uuid="node" size={size} /></MemoryRouter>);
     expect(model).toHaveBeenCalledWith("node", {
       pingBucketCount: 20,
