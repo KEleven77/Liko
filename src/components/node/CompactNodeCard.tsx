@@ -7,6 +7,7 @@ import { Flag } from "@/components/ui/Flag";
 import { useNodeCardModel } from "@/hooks/useNodeCardModel";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { formatBytes } from "@/utils/format";
+import { tagHue } from "@/utils/tagColor";
 import { MultiPingStatus } from "./MultiPingStatus";
 import { NodeTodayTrafficPopover } from "./NodeTodayTrafficPopover";
 import { formatCompactExpire, formatCompactPercent, formatCompactUptime } from "./nodeCardShared";
@@ -199,7 +200,12 @@ export const CompactNodeCard = memo(function CompactNodeCard({
         </div>}
         {node.bandwidth?.trim() && <span className="preview-node-bandwidth" title={`带宽 ${node.bandwidth}`}><ListFilter size={15} aria-hidden="true" /><span>{node.bandwidth}</span></span>}
         </div>
-        {previewTags.length > 0 && <div className="preview-node-tags">{previewTags.map((tag,index) => <span key={`${tag.label}-${index}`} className="compact-node-tag" data-tag={tag.color}>{tag.label}</span>)}</div>}
+        {previewTags.length > 0 && <div className="preview-node-tags">{previewTags.map((tag,index) => <span
+          key={`${tag.label}-${index}`}
+          className="compact-node-tag"
+          data-tag={tag.color}
+          style={tag.label === node.group ? undefined : { "--tag-hue": tagHue(tag.label) } as CSSProperties}
+        >{tag.label}</span>)}</div>}
       </footer>
     </article>
   );

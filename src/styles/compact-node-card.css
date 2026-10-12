@@ -366,6 +366,10 @@
   text-align: left;
 }
 .preview-node-v1 .multi-ping-table-latency {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 28px;
   grid-column: 3;
   grid-row: 1;
   border: 0;
@@ -387,6 +391,8 @@
 }
 
 .preview-node-v1 .multi-ping-value {
+  display: inline-block;
+  line-height: 1;
   grid-column: 3;
   grid-row: 1;
   font-size: 14px;
@@ -408,7 +414,16 @@
   background: transparent;
   cursor: pointer;
 }
-.preview-node-v1 .multi-ping-sparkline-loss { grid-column: 4; grid-row: 1; font-size: 11px; text-align: right; }
+.preview-node-v1 .multi-ping-sparkline-loss {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  grid-column: 4;
+  grid-row: 1;
+  font-size: 11px;
+  line-height: 1;
+  text-align: right;
+}
 .preview-node-v1 .multi-ping-sparkline-loss small { display: none; }
 .preview-node-v1 .multi-ping-value small { font-size: 9px; }
 .preview-node-v1 .multi-ping-sparkline-summary:focus-visible .multi-ping-name { outline: 2px solid var(--progress-cpu); outline-offset: 2px; }
@@ -463,6 +478,16 @@
 }
 
 .preview-node-tags { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 5px; min-width: 0; }
+
+/* Group tags keep their existing tokens; ordinary tags follow their text hue. */
+.preview-node-tags .compact-node-tag[style] {
+  --tag-bg: hsl(var(--tag-hue) 62% 48% / 0.13);
+  --tag-fg: hsl(var(--tag-hue) 58% 32%);
+}
+:root[data-appearance="dark"] .preview-node-tags .compact-node-tag[style] {
+  --tag-bg: hsl(var(--tag-hue) 62% 65% / 0.16);
+  --tag-fg: hsl(var(--tag-hue) 68% 76%);
+}
 @media (max-width: 350px) {
   .preview-node-v1 { padding: 10px 12px; gap: 10px; }
   .preview-node-rate > strong { font-size: 24px; }
