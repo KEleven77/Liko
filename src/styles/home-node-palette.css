@@ -13,6 +13,12 @@
   --progress-bg: #eaf0f5;
   --progress-cpu: #168bfa;
   --progress-disk: #ee963a;
+  --home-panel-bg: #f0f4f8;
+  --home-server-card-bg: linear-gradient(180deg, #eff7ff 0%, #ffffff 40%);
+  --home-server-card-border: #dfe9f3;
+  --home-server-card-shadow: 0 1px 3px rgb(32 43 53 / 4%);
+  --home-server-card-hover-border: #dfe9f3;
+  --home-server-card-hover-shadow: 0 1px 3px rgb(32 43 53 / 4%);
 }
 
 :root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)),
@@ -28,7 +34,7 @@
 
 :root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-dashboard-hero,
 :root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-cluster-card {
-  background: #f0f4f8;
+  background: var(--home-panel-bg);
   border-color: var(--border);
 }
 
@@ -46,9 +52,9 @@
 }
 
 :root[data-appearance="light"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) :is(.preview-node-v1, .server-card, .mini-node-card, .node-list) {
-  background: linear-gradient(180deg, #eff7ff 0%, #ffffff 40%);
-  border-color: #dfe9f3;
-  box-shadow: 0 1px 3px rgb(32 43 53 / 4%);
+  background: var(--home-server-card-bg);
+  border-color: var(--home-server-card-border);
+  box-shadow: var(--home-server-card-shadow);
 }
 
 :root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) {
@@ -71,6 +77,12 @@
   --progress-bg: #2c3d4d;
   --progress-cpu: #009dff;
   --progress-disk: #f2a637;
+  --home-panel-bg: #141b25;
+  --home-server-card-bg: var(--surface);
+  --home-server-card-border: var(--border);
+  --home-server-card-shadow: 0 2px 8px rgb(0 0 0 / 14%);
+  --home-server-card-hover-border: #3776a3;
+  --home-server-card-hover-shadow: 0 0 16px rgb(36 143 219 / 20%);
 }
 
 :root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)),
@@ -86,7 +98,7 @@
 
 :root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-dashboard-hero,
 :root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) .mao-cluster-card {
-  background: #141b25;
+  background: var(--home-panel-bg);
   border-color: var(--border-subtle);
 }
 
@@ -113,17 +125,17 @@
 }
 
 :root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) :is(.preview-node-v1, .server-card, .mini-node-card, .node-list) {
-  background: var(--surface);
-  border-color: var(--border);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 14%);
+  background: var(--home-server-card-bg);
+  border-color: var(--home-server-card-border);
+  box-shadow: var(--home-server-card-shadow);
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   :root[data-appearance="dark"]:has(:is(.preview-node-v1, .server-card, .mini-node-card, .node-list)) :is(.preview-node-v1, .server-card, .mini-node-card, .node-list):not(.is-offline):hover {
     background: var(--surface);
-    border-color: #3776a3;
-    box-shadow: 0 0 16px rgb(36 143 219 / 20%);
+    border-color: var(--home-server-card-hover-border);
+    box-shadow: var(--home-server-card-hover-shadow);
     transform: none;
   }
 }

@@ -86,7 +86,7 @@
   padding: 24px;
   border: 1px solid var(--hairline);
   border-radius: 22px;
-  background: var(--surface, #202024);
+  background: var(--bg-0);
   color: var(--text-primary);
   box-shadow: 0 20px 70px rgb(0 0 0 / 35%);
 }
@@ -253,10 +253,28 @@
   border-radius: 14px;
   background: var(--surface-elev);
   text-align: left;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.network-ping-panel .instance-ping-task[data-visible="true"] {
+  border-color: var(--home-server-card-border, var(--hairline)) !important;
+  background: var(--home-server-card-bg, var(--surface));
+  box-shadow: var(--home-server-card-shadow, none);
 }
 
 .network-ping-panel .instance-ping-task[data-visible="false"] {
   opacity: 0.45;
+  box-shadow: none;
+}
+
+.network-ping-panel .instance-ping-task[data-visible="true"]:hover,
+.network-ping-panel .instance-ping-task[data-visible="true"]:focus-visible {
+  border-color: var(--home-server-card-hover-border, var(--hairline)) !important;
+  box-shadow: var(--home-server-card-hover-shadow, none);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .network-ping-panel .instance-ping-task { transition: none; }
 }
 
 .network-ping-panel .instance-ping-task:hover,
@@ -437,7 +455,8 @@
 .network-ping-task-stats small { font-size: 10px; font-weight: 400; color: var(--text-tertiary); }
 .network-ping-task-stats b { font-size: 12px; font-weight: 600; color: var(--text-primary); }
 .instance-ping-unwrapped { display: contents; }
-.network-ping-task-card, .network-ping-trend-card { display: flex; flex-direction: column; gap: 18px; min-width: 0; padding: 24px; border: 1px solid var(--hairline); border-radius: 22px; background: var(--surface-elev); }
+/* Three surface levels: page-colored dialog, inset section cards, then task cards. */
+.network-ping-task-card, .network-ping-trend-card { display: flex; flex-direction: column; gap: 18px; min-width: 0; padding: 24px; border: 1px solid var(--hairline); border-radius: 22px; background: var(--home-panel-bg, var(--surface-sunken)); box-shadow: 0 2px 8px rgb(0 0 0 / 8%); }
 .network-ping-overview { order: 0; }
 .network-ping-task-card .instance-ping-task { background: var(--surface); }
 .network-ping-trend-card .instance-uplot-wrap.is-large { background: transparent; padding: 0; }

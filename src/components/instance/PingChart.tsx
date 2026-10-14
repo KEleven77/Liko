@@ -179,18 +179,11 @@ export function PingChart({
     [visibleTasks],
   );
 
+  // Keep task choices for this server across range changes and transient empty data.
   useEffect(() => {
     setHiddenTasks(new Set());
     setDetailPageIndex(0);
   }, [uuid]);
-
-  useEffect(() => {
-    setHiddenTasks((prev) => {
-      const validTaskIds = new Set(tasks.map((task) => task.id));
-      const next = new Set([...prev].filter((taskId) => validTaskIds.has(taskId)));
-      return next.size === prev.size ? prev : next;
-    });
-  }, [tasks]);
 
   // Statistics enrichment must not reparse records or rebuild curve geometry.
   const sortedRecords = useMemo(
