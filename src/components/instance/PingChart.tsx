@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import UplotReact from "uplot-react";
 import "uplot/dist/uPlot.min.css";
 import type uPlot from "uplot";
-import { Eye, EyeOff, RefreshCw, Info } from "lucide-react";
+import { Eye, EyeOff, RefreshCw } from "lucide-react";
+import { PingTaskInfo } from "./PingTaskInfo";
 import { usePingRecords } from "@/hooks/useRecords";
 import { InstancePanel, InstanceChartLoading } from "./InstancePanel";
 import {
@@ -130,6 +131,7 @@ export function PingChart({
   const [hiddenTasks, setHiddenTasks] = useState<Set<number>>(new Set());
   const [connectNulls, setConnectNulls] = useState(false);
   const [cutPeak, setCutPeak] = useState(false);
+  const [detailPageIndex, setDetailPageIndex] = useState(0);
   const chartRef = useRef<uPlot.AlignedData>([[]]);
   const [tooltip, setTooltip] = useState<ChartTooltipState>({
     show: false,
@@ -179,6 +181,7 @@ export function PingChart({
 
   useEffect(() => {
     setHiddenTasks(new Set());
+    setDetailPageIndex(0);
   }, [uuid]);
 
   useEffect(() => {
@@ -456,6 +459,9 @@ export function PingChart({
   };
 
   const selectedStats = taskStats.filter((task) => !hiddenTasks.has(task.id));
+  const pageCount = Math.max(1, Math.ceil(selectedStats.length / 6));
+  const currentPage = Math.min(detailPageIndex, pageCount - 1);
+  const pageStats = selectedStats.slice(currentPage * 6, (currentPage + 1) * 6);
   const sampleTotal = selectedStats.reduce((sum, task) => sum + task.total, 0);
   const sampleLost = selectedStats.reduce((sum, task) => sum + task.lost, 0);
   const validTotal = selectedStats.reduce((sum, task) => sum + (task.avg == null ? 0 : Math.max(0, task.total - task.lost)), 0);
@@ -483,9 +489,10 @@ export function PingChart({
   if (isLoading || !data?.records.length) {
     return (
       <>
-      {detailPage && <InstancePanel title="探测任务总览" description={isLoading ? "正在加载探测任务" : "暂无探测数据"} aside={<button type="button" className="instance-toggle-button" disabled>全部任务</button>}><div className="instance-detail-network-summary">{["探测任务", "平均延迟", "丢包率", "可用率"].map((label) => <div key={label}><span>{label}</span><strong>—</strong></div>)}</div></InstancePanel>}
-      <InstancePanel title={detailPage ? "全线路延迟" : "Ping 图表"} aside={detailPage ? rangeControls : undefined} className={networkDialog ? "network-ping-panel" : undefined}>
-        {networkDialog && <div className="network-ping-controls">{rangeControls}</div>}
+      {detailPage && <InstancePanel title="探测任务" description={isLoading ? "正在加载探测任务" : "暂无探测数据"} aside={<button type="button" className="instance-toggle-button" disabled>选择任务</button>}><div className="instance-detail-network-summary">{["探测任务", "平均延迟", "丢包率", "可用率"].map((label) => <div key={label}><span>{label}</span><strong>—</strong></div>)}</div></InstancePanel>}
+      <InstancePanel title={detailPage || networkDialog ? "网络趋势" : "Ping 图表"} aside={detailPage ? rangeControls : undefined} className={networkDialog ? "network-ping-panel" : undefined}>
+        <div className={networkDialog ? "network-ping-trend-card" : "instance-ping-unwrapped"}>
+        {networkDialog && <div className="network-ping-trend-heading"><h3>网络趋势</h3>{rangeControls}</div>}
         <div className="instance-empty" aria-busy={isLoading}>
           <span>{isLoading ? "加载中…" : isError ? "延迟历史加载失败" : "暂无延迟记录"}</span>
           {!isLoading && <button
@@ -498,6 +505,7 @@ export function PingChart({
             {isFetching ? "刷新中" : isError ? "重试" : "刷新"}
           </button>}
         </div>
+        </div>
       </InstancePanel>
       </>
     );
@@ -505,25 +513,96 @@ export function PingChart({
 
   return (
     <>
-    {detailPage && <InstancePanel title="探测任务总览" description={`已选择 ${visibleTasks.length} / ${tasks.length} 个任务`} aside={<button type="button" className="instance-toggle-button" aria-pressed={visibleTasks.length === tasks.length} onClick={toggleAll}>全部任务</button>}>
+    {detailPage && <InstancePanel title="探测任务" className="instance-detail-task-overview" description={`已选 ${visibleTasks.length} / ${tasks.length}`} aside={<details className="instance-detail-task-picker"><summary>选择任务</summary><div role="group" aria-label="全部探测任务"><button type="button" className="instance-toggle-button" onClick={toggleAll}>{visibleTasks.length === tasks.length ? "取消全选" : "全选"}</button>{taskStats.map((task) => <label key={task.id}><input type="checkbox" checked={!hiddenTasks.has(task.id)} onChange={() => toggleTask(task.id)} /><span style={{ background: task.color }} className="instance-detail-dot" />{taskLabels.get(task.id) ?? `任务 #${task.id}`}</label>)}</div></details>}>
       <div className="instance-detail-task-chips" role="group" aria-label="探测任务选择">
-        {taskStats.map((task) => <button key={task.id} type="button" aria-pressed={!hiddenTasks.has(task.id)} onClick={() => toggleTask(task.id)}><span style={{ background: task.color }} aria-hidden />{taskLabels.get(task.id) ?? `任务 #${task.id}`}</button>)}
+        {taskStats.slice(0, 7).map((task) => <button key={task.id} type="button" aria-pressed={!hiddenTasks.has(task.id)} onClick={() => toggleTask(task.id)}><span style={{ background: task.color }} aria-hidden />{taskLabels.get(task.id) ?? `任务 #${task.id}`}</button>)}
+        {tasks.length > 7 && <span className="instance-detail-extra-tasks" title="在选择任务中查看全部任务">+{tasks.length - 7}</span>}
       </div>
       <div className="instance-detail-network-summary">
-        <div><span>探测任务</span><strong>{visibleTasks.length}<small> / {tasks.length}</small></strong></div>
         <div><span>平均延迟</span><strong>{averageLatency == null ? "—" : averageLatency.toFixed(2)}<small> ms</small></strong></div>
         <div><span>丢包率</span><strong>{averageLoss == null ? "—" : `${averageLoss.toFixed(2)}%`}</strong></div>
         <div><span>可用率</span><strong>{averageLoss == null ? "—" : `${(100 - averageLoss).toFixed(2)}%`}</strong></div>
       </div>
     </InstancePanel>}
-    <InstancePanel title={detailPage ? "全线路延迟" : "Ping 图表"} description={coverageLabel ?? undefined} aside={detailPage ? rangeControls : undefined} className={networkDialog ? "network-ping-panel" : undefined}>
-      {networkDialog && <div className="network-ping-controls">
-        {rangeControls}
+    <InstancePanel title={detailPage ? "网络趋势" : "Ping 图表"} description={coverageLabel ?? undefined} aside={detailPage ? rangeControls : undefined} className={networkDialog ? "network-ping-panel" : detailPage ? "instance-detail-network-trend" : undefined}>
+      <div className={networkDialog ? "network-ping-task-card" : "instance-ping-unwrapped"}>
+      {networkDialog && <section className="network-ping-overview" aria-label="探测任务概览">
+        <div className="network-ping-controls">
+          <div><h3>探测任务</h3><span className="network-ping-count">已选 {visibleTasks.length} / {tasks.length}</span></div>
         <div className="network-ping-selection">
           <button type="button" className="instance-toggle-button" onClick={() => setHiddenTasks(new Set())}>全选</button>
           <button type="button" className="instance-toggle-button" onClick={() => setHiddenTasks(new Set(tasks.map((task) => task.id)))}>全不选</button>
         </div>
+        </div>
+        <div className="network-ping-summary tabular">
+          <div><span>平均延迟</span><strong>{averageLatency == null ? "—" : averageLatency.toFixed(2)}<small> ms</small></strong></div>
+          <div><span>丢包率</span><strong>{averageLoss == null ? "—" : averageLoss.toFixed(2)}<small> %</small></strong></div>
+          <div><span>可用率</span><strong>{averageLoss == null ? "—" : (100 - averageLoss).toFixed(2)}<small> %</small></strong></div>
+        </div>
+      </section>}
+      {!detailPage && <div className="instance-ping-tasks">
+        {taskStats.map((task) => {
+          const visible = !hiddenTasks.has(task.id);
+          const label = taskLabels.get(task.id) ?? `任务 #${task.id}`;
+          const infoText = [
+            label,
+            `当前 ${task.latest != null ? `${task.latest.toFixed(1)} ms` : "—"} | 均值 ${task.avg != null ? `${task.avg.toFixed(1)} ms` : "—"} | 丢包 ${task.loss.toFixed(1)}%`,
+            `p99 ${task.p99 != null ? `${task.p99.toFixed(0)} ms` : "—"} | 抖动 ${task.volatility != null ? task.volatility.toFixed(2) : "—"}`,
+            `min ${task.min != null ? `${task.min.toFixed(0)} ms` : "—"} | max ${task.max != null ? `${task.max.toFixed(0)} ms` : "—"} | 样本 ${task.total ?? 0} | 间隔 ${task.interval}s`,
+          ].join("\n");
+          const taskButton = (
+            <button
+              key={task.id}
+              type="button"
+              className="instance-ping-task"
+              data-visible={visible ? "true" : "false"}
+              aria-pressed={visible}
+              onClick={() => toggleTask(task.id)}
+              style={{ borderColor: visible ? task.color : "var(--border-subtle)" }}
+              title={infoText}
+            >
+              {networkDialog ? <>
+                <span className="network-ping-task-heading">
+                  <span className="network-ping-task-swatch" style={{ background: task.color }} aria-hidden />
+                  <span className="instance-ping-task-name">{taskLabels.get(task.id) ?? `任务 #${task.id}`}</span>
+                </span>
+                <span className="network-ping-task-stats tabular">
+                  <span><small>当前延迟</small><b>{task.latest != null ? `${Math.round(task.latest)} ms` : "—"}</b></span>
+                  <span><small>丢包率</small><b>{task.total ? `${task.loss.toFixed(2)}%` : "—"}</b></span>
+                  <span><small>抖动</small><b>{task.volatility != null ? task.volatility.toFixed(2) : "—"}</b></span>
+                </span>
+              </> : <>
+              <span className="instance-ping-task-dot" style={{ background: task.color }} aria-hidden />
+              <span className="instance-ping-task-name">{taskLabels.get(task.id) ?? `任务 #${task.id}`}</span>
+              <span
+                className="instance-ping-task-primary"
+                style={{
+                  color:
+                    task.latest != null
+                      ? latencyHeatColor(task.latest)
+                      : "var(--text-tertiary)",
+                }}
+              >
+                {task.latest != null ? `${task.latest.toFixed(1)} ms` : "—"}
+              </span>
+              <span
+                className="instance-ping-task-loss"
+                style={{ color: lossHeatColor(task.loss) }}
+              >
+                {task.loss.toFixed(1)}%
+              </span>
+              </>}
+            </button>
+          );
+          return networkDialog ? <div key={task.id} className="network-ping-task-container">
+            {taskButton}<PingTaskInfo label={label} text={infoText} />
+          </div> : taskButton;
+        })}
       </div>}
+
+      </div>
+      <div className={networkDialog ? "network-ping-trend-card" : "instance-ping-unwrapped"}>
+      {networkDialog && <div className="network-ping-trend-heading"><div><h3>网络趋势</h3>{coverageLabel && <span>{coverageLabel}</span>}</div>{rangeControls}</div>}
       <div className="instance-ping-toolbar">
         <SwitchToggle
           label="削峰平滑"
@@ -553,64 +632,6 @@ export function PingChart({
         </button>
       </div>
 
-      {!detailPage && <div className="instance-ping-tasks">
-        {taskStats.map((task) => {
-          const visible = !hiddenTasks.has(task.id);
-          return (
-            <button
-              key={task.id}
-              type="button"
-              className="instance-ping-task"
-              data-visible={visible ? "true" : "false"}
-              aria-pressed={visible}
-              onClick={() => toggleTask(task.id)}
-              style={{ borderColor: visible ? task.color : "var(--border-subtle)" }}
-              title={[
-                taskLabels.get(task.id) ?? `任务 #${task.id}`,
-                `当前 ${task.latest != null ? `${task.latest.toFixed(1)} ms` : "—"} | 均值 ${task.avg != null ? `${task.avg.toFixed(1)} ms` : "—"} | 丢包 ${task.loss.toFixed(1)}%`,
-                `p99 ${task.p99 != null ? `${task.p99.toFixed(0)} ms` : "—"} | 抖动 ${task.volatility != null ? task.volatility.toFixed(2) : "—"}`,
-                `min ${task.min != null ? `${task.min.toFixed(0)} ms` : "—"} | max ${task.max != null ? `${task.max.toFixed(0)} ms` : "—"} | 样本 ${task.total ?? 0} | 间隔 ${task.interval}s`,
-              ].join("\n")}
-            >
-              {networkDialog ? <>
-                <span className="network-ping-task-heading">
-                  <span className="network-ping-task-swatch" style={{ background: task.color }} aria-hidden />
-                  <span className="instance-ping-task-name">{taskLabels.get(task.id) ?? `任务 #${task.id}`}</span>
-                  <Info size={14} aria-hidden className="network-ping-task-info" />
-                </span>
-                <span className="network-ping-task-stats tabular">
-                  <span>{task.latest != null ? `${Math.round(task.latest)}ms` : "—"}</span>
-                  <span aria-hidden>·</span>
-                  <span>{task.loss.toFixed(2)}%</span>
-                  <span aria-hidden>·</span>
-                  <span>{task.volatility != null ? task.volatility.toFixed(2) : "—"}</span>
-                </span>
-              </> : <>
-              <span className="instance-ping-task-dot" style={{ background: task.color }} aria-hidden />
-              <span className="instance-ping-task-name">{taskLabels.get(task.id) ?? `任务 #${task.id}`}</span>
-              <span
-                className="instance-ping-task-primary"
-                style={{
-                  color:
-                    task.latest != null
-                      ? latencyHeatColor(task.latest)
-                      : "var(--text-tertiary)",
-                }}
-              >
-                {task.latest != null ? `${task.latest.toFixed(1)} ms` : "—"}
-              </span>
-              <span
-                className="instance-ping-task-loss"
-                style={{ color: lossHeatColor(task.loss) }}
-              >
-                {task.loss.toFixed(1)}%
-              </span>
-              </>}
-            </button>
-          );
-        })}
-      </div>}
-
       <div ref={chartSizeRef} className="instance-uplot-wrap is-large">
         {chart && options && visibleTasks.length > 0 ? (
           <>
@@ -637,13 +658,13 @@ export function PingChart({
           </button>;
         })}
       </div>}
+      </div>
     </InstancePanel>
-    {detailPage && <InstancePanel title="监测节点" description="各探测任务的实时状态与采样情况">
-      <div className="instance-detail-table-scroll"><table className="instance-detail-network-table"><thead><tr><th>探测任务</th><th>当前延迟</th><th>平均延迟</th><th>丢包率</th><th>采样完整度</th><th>最近更新</th></tr></thead><tbody>{selectedStats.map((task) => <tr key={task.id}><th><span style={{ background: task.color }} aria-hidden />{taskLabels.get(task.id) ?? `任务 #${task.id}`}</th><td>{task.latest == null ? "—" : `${task.latest.toFixed(2)} ms`}</td><td>{task.avg == null ? "—" : `${task.avg.toFixed(2)} ms`}</td><td>{task.total ? `${task.loss.toFixed(2)}%` : "—"}</td><td>{task.completeness == null ? "—" : `${task.completeness.toFixed(1)}%`}</td><td>{task.lastUpdated == null ? "—" : new Date(task.lastUpdated).toLocaleTimeString("zh-CN")}</td></tr>)}</tbody></table>{!selectedStats.length && <div className="instance-empty">未选择探测任务</div>}</div>
+    {detailPage && <InstancePanel title="探测明细" className="instance-detail-probe-details" aside={<span className="instance-detail-muted">{selectedStats.length} 个任务</span>}>
+      <div className="instance-detail-table-scroll"><table className="instance-detail-network-table"><thead><tr><th>探测任务</th><th>当前延迟</th><th>平均延迟</th><th>丢包率</th><th>采样完整度</th><th>最近更新</th></tr></thead><tbody>{pageStats.map((task) => <tr key={task.id}><th><span style={{ background: task.color }} aria-hidden />{taskLabels.get(task.id) ?? `任务 #${task.id}`}</th><td>{task.latest == null ? "—" : `${task.latest.toFixed(2)} ms`}</td><td>{task.avg == null ? "—" : `${task.avg.toFixed(2)} ms`}</td><td className={task.loss > 0 ? "instance-detail-loss-warning" : undefined}>{task.total ? `${task.loss.toFixed(2)}%` : "—"}</td><td>{task.completeness == null ? "—" : `${task.completeness.toFixed(1)}%`}</td><td>{task.lastUpdated == null ? "—" : new Date(task.lastUpdated).toLocaleTimeString("zh-CN")}</td></tr>)}</tbody></table>{!selectedStats.length && <div className="instance-empty">未选择探测任务</div>}</div>
       <div className="instance-detail-network-mobile">{selectedStats.map((task) => <div key={task.id}><strong>{taskLabels.get(task.id) ?? `任务 #${task.id}`}</strong><small>{task.lastUpdated == null ? "—" : new Date(task.lastUpdated).toLocaleTimeString("zh-CN")}</small><span>当前延迟<b>{task.latest == null ? "—" : `${task.latest.toFixed(2)} ms`}</b></span><span>平均延迟<b>{task.avg == null ? "—" : `${task.avg.toFixed(2)} ms`}</b></span><span>丢包率<b>{task.total ? `${task.loss.toFixed(2)}%` : "—"}</b></span><span>采样完整度<b>{task.completeness == null ? "—" : `${task.completeness.toFixed(1)}%`}</b></span></div>)}</div>
-    </InstancePanel>}
-    {detailPage && <InstancePanel title="线路摘要" description="优先比较丢包率，其次比较当前延迟">
-      <div className="instance-detail-network-summary">{[
+      <nav className="instance-detail-pagination" aria-label="探测明细分页"><button type="button" disabled={currentPage === 0} onClick={() => setDetailPageIndex(currentPage - 1)}>上一页</button><span>{currentPage + 1} / {pageCount}</span><button type="button" disabled={currentPage === pageCount - 1} onClick={() => setDetailPageIndex(currentPage + 1)}>下一页</button></nav>
+      <div className="instance-detail-route-summary instance-detail-card-footer"><div><strong>线路摘要</strong><small>优先比较丢包率及当前延迟</small></div>{[
         ["最佳任务", bestTask ? taskLabels.get(bestTask.id) ?? `任务 #${bestTask.id}` : "—"],
         ["可用率", bestTask ? `${(100 - bestTask.loss).toFixed(2)}%` : "—"],
         ["采样窗口", `${hours} 小时 / ${bestTask?.total ?? "—"}`],

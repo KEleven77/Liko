@@ -42,12 +42,12 @@ export function InstanceOverview({ uuid, hours, active, rangeControls }: { uuid:
   const resources = [
     { name: "CPU", value: metrics.cpuPct, detail: `${meta.cpu_cores} 核 · ${meta.cpu_name || "—"}`, color: "var(--progress-cpu)" },
     { name: "内存", value: metrics.ramPct, detail: `${formatBytes(metrics.ramUsed)} / ${formatBytes(metrics.ramTotal)}`, color: "var(--progress-memory)" },
-    { name: "Swap", value: metrics.swapTotal > 0 ? metrics.swapUsed / metrics.swapTotal * 100 : 0, detail: metrics.swapTotal > 0 ? `${formatBytes(metrics.swapUsed)} / ${formatBytes(metrics.swapTotal)}` : "未启用", color: "var(--status-warning)" },
-    { name: "磁盘", value: metrics.diskPct, detail: `${formatBytes(metrics.diskUsed)} / ${formatBytes(metrics.diskTotal)}`, color: "var(--progress-disk)" },
+    { name: "交换", value: metrics.swapTotal > 0 ? metrics.swapUsed / metrics.swapTotal * 100 : 0, detail: metrics.swapTotal > 0 ? `${formatBytes(metrics.swapUsed)} / ${formatBytes(metrics.swapTotal)}` : "未启用", color: "#6976ff" },
+    { name: "存储", value: metrics.diskPct, detail: `${formatBytes(metrics.diskUsed)} / ${formatBytes(metrics.diskTotal)}`, color: "var(--progress-disk)" },
   ];
   return (
     <div className="instance-detail-overview">
-      <InstancePanel title={metrics.online ? "实时流量" : "最近上报流量"} className="instance-detail-live" aside={rangeControls} description={metrics.online ? "网络上传与下载速率" : "节点离线，显示最近一次上报数据。"}>
+      <InstancePanel title={metrics.online ? "实时流量" : "最近上报流量"} className="instance-detail-live" aside={<div className="instance-detail-live-controls"><span className={metrics.online ? "is-online" : ""}>{metrics.online ? "实时更新" : "节点离线"}</span>{rangeControls}</div>}>
         <div className="instance-detail-rates">
           {[{ name: "上传", Icon: ArrowUp, rate: metrics.netUp, total: metrics.trafficUp, color: "var(--progress-cpu)" },
             { name: "下载", Icon: ArrowDown, rate: metrics.netDown, total: metrics.trafficDown, color: "var(--status-success)" }].map(({ name, Icon, rate, total, color }) => (
@@ -60,39 +60,32 @@ export function InstanceOverview({ uuid, hours, active, rangeControls }: { uuid:
         </div>
         {samples.length ? <Suspense fallback={<div className="instance-empty">加载流量曲线…</div>}><TrafficRateChart samples={samples} hours={hours === 0 ? 1 : hours} /></Suspense>
           : <div className="instance-empty" aria-busy={history.isPending}>{history.isPending ? "加载流量曲线…" : history.isError ? "流量历史加载失败" : "暂无流量历史"}</div>}
-      </InstancePanel>
-      <InstancePanel title="流量用量" description="当前计费周期" className="instance-detail-usage">
-        <div className="instance-detail-quota">
-          <div className="instance-detail-section-title"><span>流量用量</span><span>{traffic.unlimited ? "不限量" : `${(traffic.fraction * 100).toFixed(1)}%`}</span></div>
-          <strong>{formatBytes(traffic.used)} <small>/ {traffic.unlimited ? "∞" : formatBytes(traffic.limit)}</small></strong>
+        <div className="instance-detail-quota instance-detail-card-footer">
+          <div className="instance-detail-section-title"><span>本期流量 <strong>{formatBytes(traffic.used)} <small>/ {traffic.unlimited ? "∞" : formatBytes(traffic.limit)}</small></strong></span><span className="instance-detail-quota-percent">{traffic.unlimited ? "不限量" : `${(traffic.fraction * 100).toFixed(1)}%`}</span></div>
           <div className="instance-progress-track" aria-hidden><span className="instance-progress-fill" style={{ width: `${traffic.unlimited ? 0 : traffic.fraction * 100}%` }} /></div>
           <div className="instance-detail-quota-note"><span>{traffic.unlimited ? "不限量" : `剩余 ${formatBytes(Math.max(0, traffic.limit - traffic.used))}`}</span><span>{formatTrafficResetLabel(meta.traffic_reset_at, now)}</span></div>
         </div>
       </InstancePanel>
-      <div className="instance-detail-side">
-      <InstancePanel title="资源用量" description="当前设备资源占用">
+      <InstancePanel title="当前资源" aside={<span className="instance-detail-muted">实时</span>} className="instance-detail-side">
+        <div className="instance-detail-resource-grid">
         {resources.map(({ name, value, detail, color }) => (
           <div className="instance-detail-resource" key={name}>
-            <div className="instance-detail-section-title"><span>{name}</span><strong>{value.toFixed(1)}%</strong></div>
+            <div className="instance-detail-section-title"><span><i className="instance-detail-dot" style={{ background: color }} />{name}</span><strong>{value.toFixed(1)}%</strong></div>
             <div className="instance-progress-track" aria-hidden><span className="instance-progress-fill" style={{ width: `${Math.min(100, Math.max(0, value))}%`, background: color }} /></div>
             <small>{detail}</small>
           </div>
         ))}
-        <div className="instance-detail-resource"><div className="instance-detail-section-title"><span>负载</span><strong>{metrics.load1.toFixed(2)}</strong></div></div>
-      </InstancePanel>
-      <InstancePanel title="系统信息" description="设备配置与运行状态">
+        </div>
+        <div className="instance-detail-load-row"><span>系统负载</span>{[[metrics.load1, "1 分钟"], [metrics.load5, "5 分钟"], [metrics.load15, "15 分钟"]].map(([value, label]) => <div key={label}><strong>{Number(value).toFixed(2)}</strong><small>{label}</small></div>)}</div>
         <div className="instance-detail-system-grid">
           {[
             ["运行时长", `${uptime.value}${uptime.unit}`], ["进程", String(metrics.process)],
             ["TCP", String(metrics.connectionsTcp)], ["UDP", String(metrics.connectionsUdp)],
-            ["负载", `${metrics.load1.toFixed(2)} / ${metrics.load5.toFixed(2)} / ${metrics.load15.toFixed(2)}`],
-            ["最近更新", metrics.updatedAt > 0 ? new Date(metrics.updatedAt).toLocaleTimeString("zh-CN") : "—"],
-            ["操作系统", meta.os || "—"], ["架构", meta.arch || "—"],
-            ["虚拟化", meta.virtualization || "—"], ["显卡", meta.gpu_name || "—"],
           ].map(([label, value]) => <div className="instance-detail-system-item" key={label}><span>{label}</span><strong>{value}</strong></div>)}
         </div>
+        <details className="instance-detail-device-info"><summary>设备配置</summary><p>操作系统：{meta.os || "—"} · {meta.arch || "—"}</p><p>虚拟化：{meta.virtualization || "—"} · 显卡：{meta.gpu_name || "—"}</p></details>
+        <div className="instance-detail-card-footer instance-detail-report"><span>最后上报时间</span><time>{metrics.updatedAt > 0 ? new Date(metrics.updatedAt).toLocaleString("zh-CN", { hour12: false }) : "—"}</time></div>
       </InstancePanel>
-      </div>
     </div>
   );
 }

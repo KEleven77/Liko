@@ -1,6 +1,7 @@
 import { startTransition, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Activity, ChevronLeft, LayoutGrid } from "lucide-react";
+import { Activity, ChevronLeft, LayoutGrid, RefreshCw } from "lucide-react";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import "uplot/dist/uPlot.min.css";
 import { InstanceOverview } from "@/components/instance/InstanceOverview";
 import { InstanceSwitcher } from "@/components/instance/InstanceSwitcher";
@@ -16,7 +17,7 @@ import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { useNodeMeta, useNodeMetrics, useNodeStoreStatus } from "@/hooks/useNode";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 
-const DEFAULT_PING_HOURS = 4;
+const DEFAULT_PING_HOURS = 1;
 type TimeRangeOption = ReturnType<typeof buildLoadTimeRangeOptions>[number];
 
 function RangeSelector({
@@ -31,8 +32,11 @@ function RangeSelector({
   label?: string;
 }) {
   return (
-    <select className="instance-detail-range" aria-label={label} value={value} onChange={(event) => onChange(Number(event.target.value))}>
-      {ranges.map((range) => (
+    <div className="instance-detail-range-group" role="group" aria-label={label}>
+      {ranges.filter((range) => [1, 6, 24].includes(range.value)).map((range) => <button type="button" key={range.value} aria-pressed={value === range.value} onClick={() => onChange(range.value)}>{range.label}</button>)}
+      <select className="instance-detail-range" aria-label={`${label}：更多`} value={[1, 6, 24].includes(value) ? "" : value} onChange={(event) => onChange(Number(event.target.value))}>
+        <option value="" disabled>更多</option>
+      {ranges.filter((range) => ![1, 6, 24].includes(range.value)).map((range) => (
         <option
           key={range.value}
           value={range.value}
@@ -40,7 +44,8 @@ function RangeSelector({
           {range.label}
         </option>
       ))}
-    </select>
+      </select>
+    </div>
   );
 }
 
@@ -52,7 +57,10 @@ export function Instance() {
   const metrics = useNodeMetrics(uuid ?? "");
   const storeStatus = useNodeStoreStatus(Boolean(uuid));
   const [chartType, setChartType] = useState<"load" | "ping">("load");
-  const [loadHours, setLoadHours] = useState(0);
+  const [loadHours, setLoadHours] = useState(1);
+  const queryClient = useQueryClient();
+  const recordFilter = { predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[0] === "records" && query.queryKey[2] === uuid };
+  const fetching = useIsFetching(recordFilter) > 0;
   const [trafficHours, setTrafficHours] = useState(1);
   const [pingHours, setPingHours] = useState(DEFAULT_PING_HOURS);
 
@@ -146,8 +154,6 @@ export function Instance() {
       <Flag region={meta.region} size={24} />
       <div className="instance-detail-heading"><h1>{meta.name}</h1><span>{meta.os || "—"} · {meta.arch || "—"}{meta.bandwidth ? ` · ${meta.bandwidth}` : ""}</span></div>
       <InstanceSwitcher currentUuid={uuid} />
-      <span className={`instance-detail-status${metrics?.online ? " is-online" : ""}`}>{metrics ? metrics.online ? "在线" : "离线" : "加载中"}</span>
-      </header>
       <div className="instance-chart-controls">
         <div className="instance-segmented instance-detail-tabs" role="group" aria-label="服务器详情视图">
           <button
@@ -174,6 +180,11 @@ export function Instance() {
           )}
         </div>
       </div>
+      <div className="instance-detail-header-actions">
+        <span className={`instance-detail-status${metrics?.online ? " is-online" : ""}`}>{metrics ? metrics.online ? "在线" : "离线" : "加载中"}</span>
+        <button type="button" className="instance-toggle-button" disabled={fetching} aria-busy={fetching} title="刷新历史数据，实时指标自动更新" onClick={() => void queryClient.invalidateQueries(recordFilter)}><RefreshCw size={14} aria-hidden />{fetching ? "刷新中" : "刷新数据"}</button>
+      </div>
+      </header>
       <div className="instance-chart-stage">
         <div
           className="instance-chart-view"

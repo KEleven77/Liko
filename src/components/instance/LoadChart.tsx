@@ -532,7 +532,7 @@ export function LoadChart({
 
   return (
     <InstancePanel
-      title="资源历史趋势"
+      title="资源趋势"
       aside={
         <div className="instance-chart-headmeta">
           {rangeControls}
