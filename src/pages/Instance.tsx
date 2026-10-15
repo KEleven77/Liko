@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, startTransition, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Activity, ChevronLeft, LayoutGrid, RefreshCw } from "lucide-react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
@@ -6,7 +6,8 @@ import "uplot/dist/uPlot.min.css";
 import { InstanceOverview } from "@/components/instance/InstanceOverview";
 import { InstanceSwitcher } from "@/components/instance/InstanceSwitcher";
 import { Flag } from "@/components/ui/Flag";
-import { PingChart } from "@/components/instance/PingChart";
+import { InstanceChartLoading } from "@/components/instance/InstancePanel";
+import { clampHistoryHours } from "@/components/instance/networkRange";
 import { NetworkRangeSelector } from "@/components/instance/NetworkRangeSelector";
 import { LoadChart } from "@/components/instance/LoadChart";
 import { Spinner } from "@/components/ui/Spinner";
@@ -19,23 +20,8 @@ import { useNodeMeta, useNodeMetrics, useNodeStoreStatus } from "@/hooks/useNode
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 
 const DEFAULT_PING_HOURS = 1;
-type TimeRangeOption = ReturnType<typeof buildLoadTimeRangeOptions>[number];
-
-function RangeSelector({
-  ranges,
-  value,
-  onChange,
-  label = "图表时间范围",
-}: {
-  ranges: TimeRangeOption[];
-  value: number;
-  onChange: (value: number) => void;
-  label?: string;
-}) {
-  return (
-    <NetworkRangeSelector ranges={ranges} value={value} onChange={onChange} label={label} />
-  );
-}
+const loadPingChart = () => import("@/components/instance/PingChart").then((module) => ({ default: module.PingChart }));
+const PingChart = lazy(loadPingChart);
 
 export function Instance() {
   const { uuid } = useParams<{ uuid: string }>();
@@ -45,6 +31,7 @@ export function Instance() {
   const metrics = useNodeMetrics(uuid ?? "");
   const storeStatus = useNodeStoreStatus(Boolean(uuid));
   const [chartType, setChartType] = useState<"load" | "ping">("load");
+  const [pingVisited, setPingVisited] = useState(false);
   const [loadHours, setLoadHours] = useState(1);
   const queryClient = useQueryClient();
   const recordFilter = { predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[0] === "records" && query.queryKey[2] === uuid };
@@ -72,26 +59,16 @@ export function Instance() {
   const showPingChart = themeSettings.isReady && themeSettings.showPingChart;
 
   useEffect(() => {
-    if (trafficHours < 0 || trafficHours > Math.max(...loadRanges.map((range) => range.value))) {
-      setTrafficHours(loadRanges[0]?.value ?? 0);
-    }
-  }, [trafficHours, loadRanges]);
+    setTrafficHours((value) => clampHistoryHours(value, loadRanges));
+  }, [loadRanges]);
 
   useEffect(() => {
-    if (loadHours < 0 || loadHours > Math.max(...loadRanges.map((range) => range.value))) {
-      setLoadHours(loadRanges[0]?.value ?? 0);
-    }
-  }, [loadHours, loadRanges]);
+    setLoadHours((value) => clampHistoryHours(value, loadRanges));
+  }, [loadRanges]);
 
   useEffect(() => {
-    if (pingHours < 1 || pingHours > Math.max(...pingRanges.map((range) => range.value))) {
-      setPingHours(
-        pingRanges.find((range) => range.value === DEFAULT_PING_HOURS)?.value ??
-          pingRanges[0]?.value ??
-          DEFAULT_PING_HOURS,
-      );
-    }
-  }, [pingHours, pingRanges]);
+    setPingHours((value) => clampHistoryHours(value, pingRanges));
+  }, [pingRanges]);
 
   useEffect(() => {
     if (!showPingChart && chartType === "ping") {
@@ -159,8 +136,10 @@ export function Instance() {
               type="button"
               data-active={chartType === "ping" ? "true" : "false"}
               aria-pressed={chartType === "ping"}
+              onPointerEnter={() => { void loadPingChart().catch(() => {}); }}
+              onFocus={() => { void loadPingChart().catch(() => {}); }}
               onClick={() => {
-                startTransition(() => setChartType("ping"));
+              startTransition(() => { setPingVisited(true); setChartType("ping"); });
               }}
             >
               <Activity size={18} aria-hidden />网络监测
@@ -179,15 +158,16 @@ export function Instance() {
           hidden={chartType !== "load"}
           aria-hidden={chartType !== "load"}
         >
-          <InstanceOverview uuid={uuid} hours={trafficHours} active={chartType === "load"} rangeControls={<RangeSelector ranges={loadRanges} value={trafficHours} label="实时流量时间范围" onChange={(value) => startTransition(() => setTrafficHours(value))} />} />
-          <LoadChart uuid={uuid} hours={loadHours} active={chartType === "load"} resourceOnly rangeControls={<RangeSelector ranges={loadRanges} value={loadHours} label="历史趋势时间范围" onChange={(value) => startTransition(() => setLoadHours(value))} />} />
+          <InstanceOverview uuid={uuid} hours={trafficHours} active={chartType === "load"} rangeControls={<NetworkRangeSelector ranges={loadRanges} value={trafficHours} label="实时流量时间范围" onChange={(value) => startTransition(() => setTrafficHours(value))} />} />
+          <LoadChart uuid={uuid} hours={loadHours} active={chartType === "load"} resourceOnly rangeControls={<NetworkRangeSelector ranges={loadRanges} value={loadHours} label="历史趋势时间范围" onChange={(value) => startTransition(() => setLoadHours(value))} />} />
         </div>
         <div
           className="instance-chart-view"
           hidden={chartType !== "ping"}
           aria-hidden={chartType !== "ping"}
         >
-          {showPingChart ? (
+          {showPingChart && pingVisited ? (
+            <Suspense fallback={<InstanceChartLoading title="网络监测" />}>
             <PingChart
               uuid={uuid}
               hours={pingHours}
@@ -195,6 +175,7 @@ export function Instance() {
               detailPage
               rangeControls={<NetworkRangeSelector ranges={pingRanges} value={pingHours} onChange={(value) => startTransition(() => setPingHours(value))} />}
             />
+            </Suspense>
           ) : null}
         </div>
       </div>

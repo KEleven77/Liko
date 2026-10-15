@@ -74,8 +74,10 @@ export function InstanceOverview({ uuid, hours, active, rangeControls }: { uuid:
             </div>
           ))}
         </div>
-        {samples.length ? <Suspense fallback={<div className="instance-empty">加载流量曲线…</div>}><TrafficRateChart samples={samples} hours={hours === 0 ? 1 : hours} /></Suspense>
-          : <div className="instance-empty" aria-busy={history.isPending}>{history.isPending ? "加载流量曲线…" : history.isError ? "流量历史加载失败" : "暂无流量历史"}</div>}
+        <div className="instance-detail-traffic-chart">
+        {samples.length ? <Suspense fallback={<div className="instance-empty instance-traffic-placeholder" aria-busy="true">加载流量曲线…</div>}><TrafficRateChart samples={samples} hours={hours === 0 ? 1 : hours} /></Suspense>
+          : <div className="instance-empty instance-traffic-placeholder" aria-busy={history.isPending}>{history.isPending ? "加载流量曲线…" : history.isError ? "流量历史加载失败" : "暂无流量历史"}</div>}
+        </div>
         <div className="instance-detail-quota instance-detail-card-footer">
           <div className="instance-detail-section-title"><span>本期流量 <strong>{formatBytes(traffic.used)} <small>/ {traffic.unlimited ? "∞" : formatBytes(traffic.limit)}</small></strong></span><span className="instance-detail-quota-percent">{traffic.unlimited ? "不限量" : `${(traffic.fraction * 100).toFixed(1)}%`}</span></div>
           <div className="instance-progress-track" aria-hidden><span className="instance-progress-fill" style={{ width: `${traffic.unlimited ? 0 : traffic.fraction * 100}%` }} /></div>

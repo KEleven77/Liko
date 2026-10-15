@@ -37,11 +37,11 @@ export function NetworkRangeSelector({ ranges, value, onChange, label = "网络�
             {range.label}
           </button>
         ))}
-        <button type="button" aria-pressed={custom} onClick={() => { setCustom(true); setDraft(String(value || 1)); setError(false); }}>自定义</button>
+        <button type="button" title={`支持 1-${max} 小时`} aria-pressed={custom} onClick={() => { setCustom(true); setDraft(String(value || 1)); setError(false); }}>自定义</button>
       </div>
       {custom && <label className="node-network-custom-range">
         <span>最近</span>
-        <input type="number" min={1} max={max} step={1} value={draft} aria-label={`${label}自定义小时`}
+        <input type="number" min={1} max={max} step={1} value={draft} aria-label={`${label}自定义小时`} title={`支持 1-${max} 小时`}
           aria-invalid={error} aria-describedby={error ? errorId : undefined}
           onChange={(event) => { setDraft(event.target.value); setError(false); }} onBlur={commit}
           onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commit(); } }} />

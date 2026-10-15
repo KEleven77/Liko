@@ -9,7 +9,6 @@
   content-visibility: auto;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
   overflow: hidden;
-  will-change: transform;
   transition:
     border-color 180ms ease,
     background 180ms ease,

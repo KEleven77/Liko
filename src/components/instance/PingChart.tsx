@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import UplotReact from "uplot-react";
 import "uplot/dist/uPlot.min.css";
 import type uPlot from "uplot";
@@ -27,6 +27,8 @@ import { latencyHeatColor, lossHeatColor } from "@/utils/metricTone";
 import { historyChartRangeSeconds, historyCoverageLabel } from "@/utils/historyRange";
 import { resolvePingChartInterval, resolvePingSampleCounts } from "@/utils/pingMetrics";
 import { usePreferences } from "@/hooks/usePreferences";
+import { listenForOutsideDismiss } from "@/utils/outsideDismiss";
+import { updatePingPlot } from "./pingPlot";
 import type { PingRecord, PingTaskStats } from "@/types/komari";
 import type { TimedMetricPoint } from "./chartData";
 
@@ -125,6 +127,7 @@ export function PingChart({
     isError,
     isFetching,
     isLoading,
+    isPlaceholderData,
     refetch: refetchRecords,
   } = usePingRecords(uuid, hours, active, networkDialog);
   // Network dialogs render records immediately and enrich statistics in the background.
@@ -136,15 +139,15 @@ export function PingChart({
   const [cutPeak, setCutPeak] = useState(false);
   const [detailPageIndex, setDetailPageIndex] = useState(0);
   const chartRef = useRef<uPlot.AlignedData>([[]]);
+  const plotRef = useRef<uPlot | null>(null);
   const taskPickerRef = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     if (!detailPage) return;
-    const dismissOutside = (event: MouseEvent) => {
-      const picker = taskPickerRef.current;
-      if (picker?.open && event.target instanceof Node && !picker.contains(event.target)) {
-        picker.open = false;
-      }
-    };
+    const stopOutsideDismiss = listenForOutsideDismiss({
+      isInside: (target) => !taskPickerRef.current?.open ||
+        (target instanceof Node && taskPickerRef.current.contains(target)),
+      onDismiss: () => { if (taskPickerRef.current) taskPickerRef.current.open = false; },
+    });
     const dismissOnEscape = (event: KeyboardEvent) => {
       const picker = taskPickerRef.current;
       if (event.key === "Escape" && picker?.open) {
@@ -152,10 +155,9 @@ export function PingChart({
         picker.querySelector("summary")?.focus();
       }
     };
-    document.addEventListener("click", dismissOutside, true);
     document.addEventListener("keydown", dismissOnEscape);
     return () => {
-      document.removeEventListener("click", dismissOutside, true);
+      stopOutsideDismiss();
       document.removeEventListener("keydown", dismissOnEscape);
     };
   }, [detailPage]);
@@ -172,6 +174,8 @@ export function PingChart({
   const intervalSeconds = data?.intervalSeconds;
   const rangeStartMs = data?.rangeStartMs;
   const rangeEndMs = data?.rangeEndMs;
+  const chartHours = networkDialog && rangeStartMs != null && rangeEndMs != null && rangeEndMs > rangeStartMs
+    ? (rangeEndMs - rangeStartMs) / 3_600_000 : hours;
   const taskLabels = useMemo(() => {
     const counts = new Map<string, number>();
     for (const task of tasks) {
@@ -282,10 +286,6 @@ export function PingChart({
     return [reduced.times, ...smoothed] as uPlot.AlignedData;
   }, [cutPeak, intervalSeconds, sortedRecords, taskKeySet, taskKeys, tasks]);
 
-  useEffect(() => {
-    if (chart) chartRef.current = chart;
-  }, [chart]);
-
   const requestedXRange = useMemo(() => historyChartRangeSeconds({ rangeStartMs, rangeEndMs }), [rangeStartMs, rangeEndMs]);
   const coverageMeta = useMemo(() => {
     const taskIntervals = tasks
@@ -305,8 +305,8 @@ export function PingChart({
     return historyCoverageLabel(coverageMeta, times[0], times[times.length - 1]);
   }, [chart, coverageMeta]);
 
-  const yRange = useMemo<[number | null, number | null]>(() => {
-    if (!chart) return [null, null];
+  const yRange = useMemo<[number, number]>(() => {
+    if (!chart) return [0, 100];
     let min = Number.POSITIVE_INFINITY;
     let max = Number.NEGATIVE_INFINITY;
     for (let index = 0; index < tasks.length; index += 1) {
@@ -329,16 +329,39 @@ export function PingChart({
     return [Math.max(0, min - pad), max + pad];
   }, [chart, tasks, visibleTaskIds]);
 
-  const baseOptions = useMemo<Omit<uPlot.Options, "width" | "height"> | null>(() => {
-    if (!chart) return null;
+  // Live data and display choices must not change the options object: the wrapper
+  // recreates its canvas for every non-size options change.
+  const liveOptions = useRef({ visibleTasks, hiddenTasks, connectNulls, yRange, requestedXRange });
+  useLayoutEffect(() => {
+    if (chart) chartRef.current = chart;
+    liveOptions.current = { visibleTasks, hiddenTasks, connectNulls, yRange, requestedXRange };
+  }, [chart, visibleTasks, hiddenTasks, connectNulls, yRange, requestedXRange]);
+  const attachPlot = useCallback((plot: uPlot) => {
+    plotRef.current = plot;
+    updatePingPlot(plot, tasks, liveOptions.current);
+  }, [tasks]);
+  const detachPlot = useCallback(() => { plotRef.current = null; }, []);
+  useEffect(() => {
+    if (plotRef.current) updatePingPlot(plotRef.current, tasks, liveOptions.current);
+  }, [tasks, hiddenTasks, connectNulls, yRange]);
+  useEffect(() => {
+    setTooltip((previous) => previous.show ? { ...previous, show: false } : previous);
+  }, [chart, hiddenTasks]);
+  useEffect(() => {
+    if (plotRef.current && requestedXRange) {
+      plotRef.current.setScale("x", { min: requestedXRange[0], max: requestedXRange[1] });
+    }
+  }, [requestedXRange]);
+  const fixedXRange = requestedXRange !== null;
+  const baseOptions = useMemo<Omit<uPlot.Options, "width" | "height">>(() => {
     const { grid, text } = getAxisColors(isDark);
     const tooltipHooks = buildChartTooltipHooks({
       dataRef: chartRef,
-      rangeHours: hours,
+      rangeHours: chartHours,
       estimatedWidth: 196,
       setTooltip,
       buildRows: (idx) =>
-        visibleTasks
+        liveOptions.current.visibleTasks
           .map((task) => {
             const taskIndex = taskIndexById.get(task.id) ?? 0;
             const raw = chartRef.current[taskIndex + 1]?.[idx] as number | null | undefined;
@@ -364,10 +387,10 @@ export function PingChart({
       cursor: { drag: { x: true, y: false } },
       legend: { show: false },
       scales: {
-        x: requestedXRange
-          ? { time: true, auto: false, range: () => requestedXRange }
+        x: fixedXRange
+          ? { time: true, auto: false, range: () => liveOptions.current.requestedXRange ?? [null, null] }
           : { time: true },
-        y: { auto: false, range: yRange },
+        y: { auto: false, range: () => liveOptions.current.yRange },
       },
       axes: [
         {
@@ -375,7 +398,7 @@ export function PingChart({
           grid: { stroke: grid, width: 1 },
           ticks: { stroke: grid },
           size: 36,
-          values: createTimeAxisFormatter(hours),
+          values: createTimeAxisFormatter(chartHours),
         },
         {
           stroke: text,
@@ -391,8 +414,8 @@ export function PingChart({
           label: taskLabels.get(task.id) ?? `任务 #${task.id}`,
           stroke: taskColors.get(task.id) ?? colorForSeries(index, tasks.length),
           width: 1.7,
-          spanGaps: connectNulls,
-          show: !hiddenTasks.has(task.id),
+          spanGaps: liveOptions.current.connectNulls,
+          show: !liveOptions.current.hiddenTasks.has(task.id),
           points: { show: false },
         })),
       ],
@@ -408,7 +431,7 @@ export function PingChart({
         setCursor: [tooltipHooks.onSetCursor],
       },
     };
-  }, [chart, connectNulls, hiddenTasks, hours, isDark, requestedXRange, taskColors, taskIndexById, taskLabels, tasks, visibleTasks, yRange]);
+  }, [fixedXRange, chartHours, isDark, taskColors, taskIndexById, taskLabels, tasks]);
 
   const options = useMemo<uPlot.Options | null>(
     () => (baseOptions ? { ...baseOptions, width: w, height: networkDialog ? 240 : h } : null),
@@ -623,7 +646,7 @@ export function PingChart({
 
       </div>
       <div className={networkDialog ? "network-ping-trend-card" : "instance-ping-unwrapped"}>
-      {networkDialog && <div className="network-ping-trend-heading"><div><h3>网络趋势</h3>{coverageLabel && <span>{coverageLabel}</span>}</div>{rangeControls}</div>}
+      {networkDialog && <div className="network-ping-trend-heading"><div><h3>网络趋势</h3><span role="status">{isPlaceholderData ? `正在加载 ${hours} 小时数据，卡片和曲线暂显示上次结果` : coverageLabel}</span></div>{rangeControls}</div>}
       <div className="instance-ping-toolbar">
         <SwitchToggle
           label="削峰平滑"
@@ -657,9 +680,11 @@ export function PingChart({
         {chart && options && visibleTasks.length > 0 ? (
           <>
             <UplotReact
-              key={`${uuid}-${hours}-${cutPeak ? "smooth" : "raw"}-${connectNulls ? "span" : "gap"}`}
+              key={uuid}
               options={options}
               data={chart}
+              onCreate={attachPlot}
+              onDelete={detachPlot}
             />
             <ChartTooltip tooltip={tooltip} />
           </>

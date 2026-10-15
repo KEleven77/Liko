@@ -23,6 +23,8 @@ export function pingRecordQueryOptions(uuid: string, hours: number, progressive 
     queryKey: progressive ? ["records", "ping", uuid, hours, "progressive"] : ["records", "ping", uuid, hours],
     queryFn: ({ signal }) => getPingRecords(uuid, hours, { signal, includeStats: !progressive }),
     ...RECORD_QUERY_OPTIONS,
+    placeholderData: (previousData, previousQuery) =>
+      progressive && previousQuery?.queryKey[2] === uuid ? previousData : undefined,
   });
 }
 
@@ -37,16 +39,16 @@ export function usePingRecords(uuid: string, hours = 6, enabled = true, progress
     queryFn: ({ signal }) => getPingOverviewStats(hours, taskIds, { entityIds: [uuid], signal, timeout: 8_000 }),
     ...RECORD_QUERY_OPTIONS,
     retry: false,
-    enabled: progressive && Boolean(uuid) && enabled && taskIds.length > 0 && Boolean(records.data),
+    enabled: progressive && Boolean(uuid) && enabled && taskIds.length > 0 && Boolean(records.data) && !records.isPlaceholderData,
   });
   const data = useMemo(() => {
-    if (!records.data || !progressive || !stats.data?.length) return records.data;
+    if (!records.data || records.isPlaceholderData || !progressive || !stats.data?.length) return records.data;
     return { ...records.data, stats: reconcilePingMetricStats(stats.data, records.data.records) };
-  }, [records.data, progressive, stats.data]);
+  }, [records.data, records.isPlaceholderData, progressive, stats.data]);
 
   return { ...records, data, refetch: async () => {
     // Optional statistics never block the primary chart's refresh state.
-    if (progressive && taskIds.length > 0) void stats.refetch();
+    if (progressive && taskIds.length > 0 && !records.isPlaceholderData) void stats.refetch();
     return records.refetch();
   } };
 }

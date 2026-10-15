@@ -28,6 +28,11 @@
   background: var(--bg-0) !important;
   border-color: var(--border-subtle);
 }
+.instance-detail-traffic-chart { container-type: inline-size; min-width: 0; }
+.instance-traffic-placeholder { height: 254px; }
+@container (max-width: 581px) {
+  .instance-traffic-placeholder { height: 216px; }
+}
 .instance-detail-page { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .instance-detail-page { --progress-cpu: #078dee; --progress-memory: #9868ef; --progress-disk: #f2a23a; --status-success: #22c55e; }
 .instance-detail-header { display: flex; align-items: center; gap: 12px; padding: 8px 4px; }

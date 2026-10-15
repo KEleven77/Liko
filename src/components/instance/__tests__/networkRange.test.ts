@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { parseNetworkHours } from "../networkRange";
+import { clampHistoryHours, parseNetworkHours } from "../networkRange";
+import { buildLoadTimeRangeOptions, buildPingTimeRangeOptions } from "../chartShared";
 
 it.each(["", " ", "0", "-1", "1.5", "NaN", "Infinity"])("rejects uncommittable hours: %s", (text) => {
   expect(parseNetworkHours(text)).toBeNull();
@@ -22,4 +23,12 @@ it("accepts a whole hour within a custom retention window", () => {
   expect(parseNetworkHours("12", 48)).toBe(12);
   expect(parseNetworkHours("48", 48)).toBe(48);
   expect(parseNetworkHours("49", 48)).toBeNull();
+});
+
+it("clamps history to shortened retention instead of resetting to realtime", () => {
+  const ranges = buildLoadTimeRangeOptions(6);
+  expect(clampHistoryHours(12, ranges)).toBe(6);
+  expect(clampHistoryHours(0, ranges)).toBe(0);
+  expect(clampHistoryHours(3, ranges)).toBe(3);
+  expect(clampHistoryHours(48, buildPingTimeRangeOptions(10))).toBe(10);
 });

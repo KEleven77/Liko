@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { PingChart } from "../PingChart";
 import type { PingRecord } from "@/types/komari";
 
-const state = vi.hoisted(() => ({ isError: false, isLoading: false, isFetching: false }));
+const state = vi.hoisted(() => ({ isError: false, isLoading: false, isFetching: false, isPlaceholderData: false }));
 const fixture = vi.hoisted(() => ({ records: [] as PingRecord[], tasks: [] as { id: number; name: string }[] }));
 vi.mock("@/hooks/useRecords", () => ({ usePingRecords: () => ({
   data: fixture, ...state, refetch: vi.fn(),
@@ -14,7 +14,20 @@ vi.mock("../chartShared", async (original) => ({
   useResponsiveChartSize: () => ({ w: 800, h: 240, ref: { current: null } }),
 }));
 
-beforeEach(() => { state.isError = state.isLoading = state.isFetching = false; fixture.records = []; fixture.tasks = []; });
+beforeEach(() => { state.isError = state.isLoading = state.isFetching = state.isPlaceholderData = false; fixture.records = []; fixture.tasks = []; });
+
+it("retains task cards and controls while switching to an uncached window", () => {
+  fixture.tasks = [{ id: 1, name: "电信" }];
+  fixture.records = [{ task_id: 1, client: "node", time: new Date().toISOString(), value: 42, count: 10, loss: 0 }];
+  state.isPlaceholderData = state.isFetching = true;
+  const html = renderToStaticMarkup(<PingChart uuid="node" hours={6} networkDialog rangeControls={<button>6小时</button>} />);
+  expect(html).toContain('aria-label="探测任务概览"');
+  expect(html).toContain("查看 电信 探测任务信息");
+  expect(html).toContain("卡片和曲线暂显示上次结果");
+  expect(html).toContain('role="status"');
+  expect(html).toContain("6小时</button>");
+  expect(html).not.toContain("加载中…");
+});
 
 it("renders the floating overview and labelled metrics without changing the detail layout", () => {
   fixture.tasks = [{ id: 1, name: "电信" }];

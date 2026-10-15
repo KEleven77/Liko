@@ -6,6 +6,7 @@ import { InstanceChartLoading } from "@/components/instance/InstancePanel";
 import { pingRecordQueryOptions } from "@/hooks/useRecords";
 import { buildPingTimeRangeOptions } from "@/components/instance/chartShared";
 import { NetworkRangeSelector } from "@/components/instance/NetworkRangeSelector";
+import { clampHistoryHours } from "@/components/instance/networkRange";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
 
 const PingChart = lazy(() => import("@/components/instance/PingChart").then((module) => ({ default: module.PingChart })));
@@ -30,10 +31,8 @@ export function NodeNetworkDialog({ uuid, name, onClose }: { uuid: string; name:
 
   // Clamp selected hours whenever retention info arrives and rules out the current selection.
   useEffect(() => {
-    if (!ranges.length) return;
-    const max = Math.max(...ranges.map((r) => r.value));
-    if (hours > max) setHours(ranges[0]?.value ?? 1);
-  }, [hours, ranges]);
+    setHours((value) => clampHistoryHours(value, ranges));
+  }, [ranges]);
 
   useEffect(() => {
     const dialog = ref.current;

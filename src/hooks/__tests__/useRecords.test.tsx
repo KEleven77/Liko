@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { beforeEach, expect, it, vi } from "vitest";
 import { pingRecordQueryOptions, usePingRecords } from "../useRecords";
 import { getPingRecords } from "@/services/api";
@@ -40,6 +40,35 @@ it("renders available records without waiting for optional statistics", () => {
     expect(result.isLoading).toBe(false);
     expect(result.data).toBe(data);
   } finally { client.clear(); }
+});
+
+it("keeps the previous window while loading, but never another server's records", () => {
+  const client = new QueryClient();
+  client.setQueryData(pingRecordQueryOptions("node", 1, true).queryKey, data);
+  vi.mocked(getPingRecords).mockImplementation(() => new Promise(() => {}));
+  const observer = new QueryObserver(client, pingRecordQueryOptions("node", 1, true));
+  const unsubscribe = observer.subscribe(() => {});
+  try {
+    observer.setOptions(pingRecordQueryOptions("node", 6, true));
+    expect(observer.getCurrentResult()).toMatchObject({ data, isPlaceholderData: true, isLoading: false, isFetching: true });
+    expect(client.getQueryData(pingRecordQueryOptions("node", 6, true).queryKey)).toBeUndefined();
+    observer.setOptions(pingRecordQueryOptions("other", 6, true));
+    expect(observer.getCurrentResult().data).toBeUndefined();
+    expect(observer.getCurrentResult().isPlaceholderData).toBe(false);
+  } finally { unsubscribe(); observer.destroy(); client.clear(); }
+});
+
+it("does not retain placeholder records outside progressive dialogs", () => {
+  const client = new QueryClient();
+  client.setQueryData(pingRecordQueryOptions("node", 1).queryKey, data);
+  vi.mocked(getPingRecords).mockImplementation(() => new Promise(() => {}));
+  const observer = new QueryObserver(client, pingRecordQueryOptions("node", 1));
+  const unsubscribe = observer.subscribe(() => {});
+  try {
+    observer.setOptions(pingRecordQueryOptions("node", 6));
+    expect(observer.getCurrentResult().data).toBeUndefined();
+    expect(observer.getCurrentResult().isPlaceholderData).toBe(false);
+  } finally { unsubscribe(); observer.destroy(); client.clear(); }
 });
 
 it("enriches cached records and reconciles loss from weighted sample counts", () => {

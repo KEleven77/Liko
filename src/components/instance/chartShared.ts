@@ -25,16 +25,10 @@ const CHART_SERIES_COLORS = [
   "#82c6e2", // 浅蓝
 ] as const;
 
-let oklchSupported: boolean | null = null;
 function supportsOklch(): boolean {
-  if (oklchSupported === null) {
-    oklchSupported =
-      typeof window !== "undefined" &&
-      typeof window.CSS !== "undefined" &&
-      typeof window.CSS.supports === "function" &&
-      window.CSS.supports("color", "oklch(0.7 0.2 120 / 0.85)");
-  }
-  return oklchSupported;
+  return typeof window !== "undefined" &&
+    typeof window.CSS?.supports === "function" &&
+    window.CSS.supports("color", "oklch(0.7 0.2 120 / 0.95)");
 }
 
 export function colorForSeries(index: number, total?: number): string {

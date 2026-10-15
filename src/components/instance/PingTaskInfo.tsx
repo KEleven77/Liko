@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useRef } from "react";
 import { Info, X } from "lucide-react";
 
 export interface PingTaskInfoStats {
@@ -18,6 +18,8 @@ export interface PingTaskInfoStats {
 
 export function PingTaskInfo({ label, stats }: { label: string; stats: PingTaskInfoStats }) {
   const id = useId();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const nativePopover = typeof HTMLElement === "undefined" || "showPopover" in HTMLElement.prototype;
   const latency = (value: number | null) => value != null && Number.isFinite(value) ? `${Math.round(value)} ms` : "—";
   const decimal = (value: number | null, digits: number) => value != null && Number.isFinite(value) ? value.toFixed(digits) : "—";
   const fields = [
@@ -28,18 +30,30 @@ export function PingTaskInfo({ label, stats }: { label: string; stats: PingTaskI
     ["类型", stats.type?.toUpperCase() || "—"], ["标准差", decimal(stats.stddev, 1)],
     ["总数", stats.total], ["有效", stats.valid],
   ] as const;
+  const content = <>
+    <header><strong>探测任务信息</strong><button type="button" popoverTarget={nativePopover ? id : undefined}
+      popoverTargetAction={nativePopover ? "hide" : undefined} onClick={() => dialogRef.current?.close()}
+      aria-label="关闭任务信息"><X size={16} aria-hidden /></button></header>
+    <dl className="network-ping-task-info-grid tabular">
+      {fields.map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}
+    </dl>
+  </>;
   return <>
-    <button type="button" className="network-ping-task-info" popoverTarget={id}
+    <button type="button" className="network-ping-task-info" popoverTarget={nativePopover ? id : undefined}
+      onClick={() => { if (!nativePopover) dialogRef.current?.showModal(); }}
       aria-label={`查看 ${label} 探测任务信息`} aria-haspopup="dialog" title="查看任务信息">
       <Info size={14} aria-hidden />
     </button>
-    <div id={id} popover="auto" role="dialog" aria-label={`${label} 探测任务信息`}
+    {nativePopover ? <div id={id} popover="auto" role="dialog" aria-label={`${label} 探测任务信息`}
       className="network-ping-task-info-popover">
-      <header><strong>探测任务信息</strong><button type="button" popoverTarget={id}
-        popoverTargetAction="hide" aria-label="关闭任务信息"><X size={16} aria-hidden /></button></header>
-      <dl className="network-ping-task-info-grid tabular">
-        {fields.map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}
-      </dl>
-    </div>
+      {content}
+    </div> : <dialog id={id} ref={dialogRef} className="network-ping-task-info-popover"
+      aria-label={`${label} 探测任务信息`} onCancel={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (event.target !== event.currentTarget) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialogRef.current?.close();
+      }}>{content}</dialog>}
   </>;
 }

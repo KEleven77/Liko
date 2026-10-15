@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { PingTaskInfo } from "../PingTaskInfo";
 
 const stats = { min: 33, max: 191, avg: 56, latest: 68, p50: 55, p99: 185,
@@ -28,4 +28,17 @@ it("shows a placeholder for missing latency and deviation rather than zero", () 
   const html = renderToStaticMarkup(<PingTaskInfo label="空任务" stats={{ ...stats, min: null, stddev: null }} />);
   expect(html).toContain('<dt>最小</dt><dd>—</dd>');
   expect(html).toContain('<dt>标准差</dt><dd>—</dd>');
+});
+
+it("uses a closed native dialog when the browser has no Popover API", () => {
+  vi.stubGlobal("HTMLElement", class {});
+  try {
+    const html = renderToStaticMarkup(<PingTaskInfo label="旧浏览器" stats={stats} />);
+    expect(html).toContain("<dialog ");
+    expect(html).not.toContain(" open=");
+    expect(html).not.toContain("popover=");
+    expect(html).toContain("关闭任务信息");
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
