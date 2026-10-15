@@ -30,5 +30,10 @@ describe("summarizePingRecords", () => {
     expect(summary.avg).toBeCloseTo(200 / 11, 8);
     expect(summary.p99).toBeCloseTo(91, 8);
     expect(summary.loss).toBeCloseTo((6 / 17) * 100, 8);
+    expect(summary.stddev).toBeCloseTo(Math.sqrt((10 * (10 - 200 / 11) ** 2 + (100 - 200 / 11) ** 2) / 11), 8);
+  });
+
+  it("does not invent deviation when there are no valid samples", () => {
+    expect(summarizePingRecords([]).stddev).toBeNull();
   });
 });

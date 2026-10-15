@@ -7,6 +7,7 @@ import { InstanceOverview } from "@/components/instance/InstanceOverview";
 import { InstanceSwitcher } from "@/components/instance/InstanceSwitcher";
 import { Flag } from "@/components/ui/Flag";
 import { PingChart } from "@/components/instance/PingChart";
+import { NetworkRangeSelector } from "@/components/instance/NetworkRangeSelector";
 import { LoadChart } from "@/components/instance/LoadChart";
 import { Spinner } from "@/components/ui/Spinner";
 import {
@@ -32,20 +33,7 @@ function RangeSelector({
   label?: string;
 }) {
   return (
-    <div className="instance-detail-range-group" role="group" aria-label={label}>
-      {ranges.filter((range) => [1, 6, 24].includes(range.value)).map((range) => <button type="button" key={range.value} aria-pressed={value === range.value} onClick={() => onChange(range.value)}>{range.label}</button>)}
-      <select className="instance-detail-range" aria-label={`${label}：更多`} value={[1, 6, 24].includes(value) ? "" : value} onChange={(event) => onChange(Number(event.target.value))}>
-        <option value="" disabled>更多</option>
-      {ranges.filter((range) => ![1, 6, 24].includes(range.value)).map((range) => (
-        <option
-          key={range.value}
-          value={range.value}
-        >
-          {range.label}
-        </option>
-      ))}
-      </select>
-    </div>
+    <NetworkRangeSelector ranges={ranges} value={value} onChange={onChange} label={label} />
   );
 }
 
@@ -84,19 +72,19 @@ export function Instance() {
   const showPingChart = themeSettings.isReady && themeSettings.showPingChart;
 
   useEffect(() => {
-    if (!loadRanges.some((range) => range.value === trafficHours)) {
+    if (trafficHours < 0 || trafficHours > Math.max(...loadRanges.map((range) => range.value))) {
       setTrafficHours(loadRanges[0]?.value ?? 0);
     }
   }, [trafficHours, loadRanges]);
 
   useEffect(() => {
-    if (!loadRanges.some((range) => range.value === loadHours)) {
+    if (loadHours < 0 || loadHours > Math.max(...loadRanges.map((range) => range.value))) {
       setLoadHours(loadRanges[0]?.value ?? 0);
     }
   }, [loadHours, loadRanges]);
 
   useEffect(() => {
-    if (!pingRanges.some((range) => range.value === pingHours)) {
+    if (pingHours < 1 || pingHours > Math.max(...pingRanges.map((range) => range.value))) {
       setPingHours(
         pingRanges.find((range) => range.value === DEFAULT_PING_HOURS)?.value ??
           pingRanges[0]?.value ??
@@ -205,7 +193,7 @@ export function Instance() {
               hours={pingHours}
               active={chartType === "ping"}
               detailPage
-              rangeControls={<RangeSelector ranges={pingRanges} value={pingHours} label="网络监测时间范围" onChange={(value) => startTransition(() => setPingHours(value))} />}
+              rangeControls={<NetworkRangeSelector ranges={pingRanges} value={pingHours} onChange={(value) => startTransition(() => setPingHours(value))} />}
             />
           ) : null}
         </div>

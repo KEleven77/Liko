@@ -125,6 +125,13 @@
 .instance-detail-range-group button { font-size: 11px; padding: 8px 10px; border-radius: 7px; color: var(--text-tertiary); cursor: pointer; }
 .instance-detail-range-group button[aria-pressed="true"] { background: color-mix(in srgb, var(--progress-cpu) 14%, transparent); color: var(--progress-cpu); }
 .instance-detail-range-group .instance-detail-range { border: 0; background: transparent; font-size: 11px; }
+.instance-network-ranges { padding: 4px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-sunken); }
+.instance-custom-range-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.instance-network-ranges button { min-height: 34px; padding: 7px 12px; border: 1px solid transparent; font-size: 12px; white-space: nowrap; transition: background-color 160ms, border-color 160ms; }
+.instance-network-ranges button:hover { background: var(--surface-elev); color: var(--text-primary); }
+.instance-network-ranges button[aria-pressed="true"] { border-color: color-mix(in srgb, var(--progress-cpu) 40%, transparent); background: color-mix(in srgb, var(--progress-cpu) 18%, var(--surface)); color: var(--progress-cpu); font-weight: 650; box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
+.instance-network-ranges button:focus-visible { outline: 2px solid var(--progress-cpu); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .instance-network-ranges button { transition: none; } }
 .instance-detail-page .instance-detail-task-overview { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.8fr); column-gap: 30px; }
 .instance-detail-task-overview > .instance-panel-header { grid-column: 1; margin-bottom: 6px; }
 .instance-detail-task-overview .instance-panel-title-row { display: inline-flex; }

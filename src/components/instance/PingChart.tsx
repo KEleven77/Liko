@@ -70,6 +70,9 @@ export function summarizePingRecords(records: PingRecord[]) {
   const total = samples.reduce((sum, sample) => sum + sample.total, 0);
   const lost = samples.reduce((sum, sample) => sum + sample.lost, 0);
   const validCount = valid.reduce((sum, sample) => sum + sample.weight, 0);
+  const avg = validCount > 0
+    ? valid.reduce((sum, sample) => sum + sample.value * sample.weight, 0) / validCount
+    : null;
 
   let latest: number | null = null;
   for (let index = samples.length - 1; index >= 0; index -= 1) {
@@ -82,10 +85,10 @@ export function summarizePingRecords(records: PingRecord[]) {
 
   return {
     latest,
-    avg:
-      validCount > 0
-        ? valid.reduce((sum, sample) => sum + sample.value * sample.weight, 0) / validCount
-        : null,
+    avg,
+    stddev: avg != null
+      ? Math.sqrt(valid.reduce((sum, sample) => sum + (sample.value - avg) ** 2 * sample.weight, 0) / validCount)
+      : null,
     min: valid[0]?.value ?? null,
     max: valid[valid.length - 1]?.value ?? null,
     p50: percentileFromWeighted(valid, 0.5),
@@ -437,6 +440,8 @@ export function PingChart({
         p50,
         p99,
         volatility,
+        stddev: server ? server.stddev : fallback?.stddev ?? null,
+        valid: server?.valid ?? Math.max(0, total - lost),
         total,
         lost,
         loss,
@@ -588,7 +593,7 @@ export function PingChart({
             </button>
           );
           return networkDialog ? <div key={task.id} className="network-ping-task-container">
-            {taskButton}<PingTaskInfo label={label} text={infoText} />
+            {taskButton}<PingTaskInfo label={label} stats={task} />
           </div> : taskButton;
         })}
       </div>}

@@ -37,7 +37,7 @@ export function NodeNetworkDialog({ uuid, name, onClose }: { uuid: string; name:
   }, [queryClient, uuid, hours]);
   const rangeControls = <div className="node-network-range-controls">
     <div className="node-network-ranges" role="group" aria-label="网络历史时间范围">
-      {[1, 6, 12, 24].map((value) => <button type="button" key={value} aria-pressed={!custom && hours === value}
+      {[1, 4, 6, 12, 24].map((value) => <button type="button" key={value} aria-pressed={!custom && hours === value}
         onClick={() => { setCustom(false); setHours(value); setHoursText(String(value)); setRangeError(false); }}>
         {value === 24 ? "1天" : `${value}小时`}
       </button>)}

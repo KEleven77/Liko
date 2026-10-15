@@ -72,21 +72,27 @@ interface TimeRangeOption {
   value: number;
 }
 
-// load 和 ping 共用同一套历史区间预设；唯一区别是是否在前面加 "实时" 选项，这由
-// buildHistoryRangeOptions 的 includeRealtime 标志处理，而非改预设列表本身。
+// 资源历史支持实时与最长 30 天；Ping 的最长快捷范围为一周。
 const TIME_RANGE_OPTIONS: TimeRangeOption[] = [
   { label: "1 小时", value: 1 },
   { label: "4 小时", value: 4 },
+  { label: "6 小时", value: 6 },
+  { label: "12 小时", value: 12 },
   { label: "1 天", value: 24 },
   { label: "7 天", value: 168 },
   { label: "30 天", value: 720 },
 ];
 
-// Ping 详情只保留高分辨率仍有观察价值的四档。metric store 虽可保留更久，
+// Ping 详情保留常用小时范围和最长一周。metric store 虽可保留更久，
 // 但 30/90 天会退化到小时级 rollup，不再放进详情页快捷范围。
-const PING_TIME_RANGE_OPTIONS: TimeRangeOption[] = TIME_RANGE_OPTIONS.filter(
-  (option) => option.value <= 168,
-);
+const PING_TIME_RANGE_OPTIONS: TimeRangeOption[] = [
+  { label: "1 小时", value: 1 },
+  { label: "4 小时", value: 4 },
+  { label: "6 小时", value: 6 },
+  { label: "12 小时", value: 12 },
+  { label: "1 天", value: 24 },
+  { label: "7 天", value: 168 },
+];
 
 function formatRangeLabel(hours: number) {
   if (hours % 24 === 0) {
@@ -129,11 +135,7 @@ export function buildLoadTimeRangeOptions(maxHours: number | null | undefined) {
 }
 
 export function buildPingTimeRangeOptions(maxHours: number | null | undefined) {
-  if (!Number.isFinite(maxHours) || !maxHours || maxHours <= 0) {
-    return [...PING_TIME_RANGE_OPTIONS];
-  }
-  const safeMaxHours = Math.floor(maxHours);
-  return PING_TIME_RANGE_OPTIONS.filter((option) => option.value <= safeMaxHours);
+  return buildHistoryRangeOptions(PING_TIME_RANGE_OPTIONS, maxHours, false);
 }
 
 const GRID_CHART_DEFAULT = { w: 320, h: 132 };

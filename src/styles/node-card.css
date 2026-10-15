@@ -340,7 +340,10 @@
 }
 .network-ping-task-info-popover header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .network-ping-task-info-popover header button { display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); width: 28px; height: 28px; cursor: pointer; }
-.network-ping-task-info-popover p { margin: 12px 0 0; font-size: 12px; line-height: 1.8; white-space: pre-line; overflow-wrap: anywhere; }
+.network-ping-task-info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; margin: 12px 0 0; font-size: 14px; line-height: 1.6; }
+.network-ping-task-info-grid > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: baseline; gap: 8px; }
+.network-ping-task-info-grid dt { color: var(--text-secondary); }
+.network-ping-task-info-grid dd { margin: 0; color: var(--text-primary); overflow-wrap: anywhere; }
 
 .network-ping-task-stats {
   display: grid;

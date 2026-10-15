@@ -1,8 +1,33 @@
 import { useId } from "react";
 import { Info, X } from "lucide-react";
 
-export function PingTaskInfo({ label, text }: { label: string; text: string }) {
+export interface PingTaskInfoStats {
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  latest: number | null;
+  p50: number | null;
+  p99: number | null;
+  volatility: number | null;
+  interval: number;
+  type: string;
+  stddev: number | null;
+  total: number;
+  valid: number;
+}
+
+export function PingTaskInfo({ label, stats }: { label: string; stats: PingTaskInfoStats }) {
   const id = useId();
+  const latency = (value: number | null) => value != null && Number.isFinite(value) ? `${Math.round(value)} ms` : "—";
+  const decimal = (value: number | null, digits: number) => value != null && Number.isFinite(value) ? value.toFixed(digits) : "—";
+  const fields = [
+    ["最小", latency(stats.min)], ["最大", latency(stats.max)],
+    ["平均", latency(stats.avg)], ["最新", latency(stats.latest)],
+    ["P50", latency(stats.p50)], ["P99", latency(stats.p99)],
+    ["波动率", decimal(stats.volatility, 2)], ["间隔", `${stats.interval}s`],
+    ["类型", stats.type?.toUpperCase() || "—"], ["标准差", decimal(stats.stddev, 1)],
+    ["总数", stats.total], ["有效", stats.valid],
+  ] as const;
   return <>
     <button type="button" className="network-ping-task-info" popoverTarget={id}
       aria-label={`查看 ${label} 探测任务信息`} aria-haspopup="dialog" title="查看任务信息">
@@ -12,7 +37,9 @@ export function PingTaskInfo({ label, text }: { label: string; text: string }) {
       className="network-ping-task-info-popover">
       <header><strong>探测任务信息</strong><button type="button" popoverTarget={id}
         popoverTargetAction="hide" aria-label="关闭任务信息"><X size={16} aria-hidden /></button></header>
-      <p>{text}</p>
+      <dl className="network-ping-task-info-grid tabular">
+        {fields.map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}
+      </dl>
     </div>
   </>;
 }
