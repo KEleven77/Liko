@@ -136,6 +136,29 @@ export function PingChart({
   const [cutPeak, setCutPeak] = useState(false);
   const [detailPageIndex, setDetailPageIndex] = useState(0);
   const chartRef = useRef<uPlot.AlignedData>([[]]);
+  const taskPickerRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (!detailPage) return;
+    const dismissOutside = (event: MouseEvent) => {
+      const picker = taskPickerRef.current;
+      if (picker?.open && event.target instanceof Node && !picker.contains(event.target)) {
+        picker.open = false;
+      }
+    };
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      const picker = taskPickerRef.current;
+      if (event.key === "Escape" && picker?.open) {
+        picker.open = false;
+        picker.querySelector("summary")?.focus();
+      }
+    };
+    document.addEventListener("click", dismissOutside, true);
+    document.addEventListener("keydown", dismissOnEscape);
+    return () => {
+      document.removeEventListener("click", dismissOutside, true);
+      document.removeEventListener("keydown", dismissOnEscape);
+    };
+  }, [detailPage]);
   const [tooltip, setTooltip] = useState<ChartTooltipState>({
     show: false,
     left: 0,
@@ -511,7 +534,7 @@ export function PingChart({
 
   return (
     <>
-    {detailPage && <InstancePanel title="探测任务" className="instance-detail-task-overview" description={`已选 ${visibleTasks.length} / ${tasks.length}`} aside={<details className="instance-detail-task-picker"><summary>选择任务</summary><div role="group" aria-label="全部探测任务"><button type="button" className="instance-toggle-button" onClick={toggleAll}>{visibleTasks.length === tasks.length ? "取消全选" : "全选"}</button>{taskStats.map((task) => <label key={task.id}><input type="checkbox" checked={!hiddenTasks.has(task.id)} onChange={() => toggleTask(task.id)} /><span style={{ background: task.color }} className="instance-detail-dot" />{taskLabels.get(task.id) ?? `任务 #${task.id}`}</label>)}</div></details>}>
+    {detailPage && <InstancePanel title="探测任务" className="instance-detail-task-overview" description={`已选 ${visibleTasks.length} / ${tasks.length}`} aside={<details ref={taskPickerRef} className="instance-detail-task-picker"><summary>选择任务</summary><div role="group" aria-label="全部探测任务"><button type="button" className="instance-toggle-button" onClick={toggleAll}>{visibleTasks.length === tasks.length ? "取消全选" : "全选"}</button>{taskStats.map((task) => <label key={task.id}><input type="checkbox" checked={!hiddenTasks.has(task.id)} onChange={() => toggleTask(task.id)} /><span style={{ background: task.color }} className="instance-detail-dot" />{taskLabels.get(task.id) ?? `任务 #${task.id}`}</label>)}</div></details>}>
       <div className="instance-detail-task-chips" role="group" aria-label="探测任务选择">
         {taskStats.slice(0, 7).map((task) => <button key={task.id} type="button" aria-pressed={!hiddenTasks.has(task.id)} onClick={() => toggleTask(task.id)}><span style={{ background: task.color }} aria-hidden />{taskLabels.get(task.id) ?? `任务 #${task.id}`}</button>)}
         {tasks.length > 7 && <span className="instance-detail-extra-tasks" title="在选择任务中查看全部任务">+{tasks.length - 7}</span>}

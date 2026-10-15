@@ -1,58 +1,60 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { InstanceChartLoading } from "@/components/instance/InstancePanel";
 import { pingRecordQueryOptions } from "@/hooks/useRecords";
+import { buildPingTimeRangeOptions } from "@/components/instance/chartShared";
+import { NetworkRangeSelector } from "@/components/instance/NetworkRangeSelector";
+import { usePublicConfig } from "@/hooks/usePublicConfig";
 
 const PingChart = lazy(() => import("@/components/instance/PingChart").then((module) => ({ default: module.PingChart })));
-
-export function parseNetworkHours(text: string): number | null {
-  if (!text.trim()) return null;
-  const value = Number(text);
-  return Number.isInteger(value) && value >= 1 && value <= 168 ? value : null;
-}
 
 export function NodeNetworkDialog({ uuid, name, onClose }: { uuid: string; name: string; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const queryClient = useQueryClient();
+  const { data: config } = usePublicConfig();
   const [hours, setHours] = useState(1);
-  const [custom, setCustom] = useState(false);
-  const [hoursText, setHoursText] = useState("1");
-  const [rangeError, setRangeError] = useState(false);
-  const rangeErrorId = useId();
-  const commitHours = () => {
-    const value = parseNetworkHours(hoursText);
-    setRangeError(value == null);
-    if (value != null) setHours(value);
-  };
+
+  const pingRetentionHours = useMemo(() => {
+    if (config?.metric_retention_days && config.metric_retention_days > 0) {
+      return config.metric_retention_days * 24;
+    }
+    return config?.ping_record_preserve_time ?? null;
+  }, [config]);
+
+  const ranges = useMemo(
+    () => buildPingTimeRangeOptions(pingRetentionHours),
+    [pingRetentionHours],
+  );
+
+  // Clamp selected hours whenever retention info arrives and rules out the current selection.
+  useEffect(() => {
+    if (!ranges.length) return;
+    const max = Math.max(...ranges.map((r) => r.value));
+    if (hours > max) setHours(ranges[0]?.value ?? 1);
+  }, [hours, ranges]);
+
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal();
     return () => dialog?.close();
   }, []);
+
   // Start data loading alongside the lazy chart module, using the same query cache.
   useEffect(() => {
     if (uuid) void queryClient.prefetchQuery(pingRecordQueryOptions(uuid, hours, true));
   }, [queryClient, uuid, hours]);
-  const rangeControls = <div className="node-network-range-controls">
-    <div className="node-network-ranges" role="group" aria-label="网络历史时间范围">
-      {[1, 4, 6, 12, 24].map((value) => <button type="button" key={value} aria-pressed={!custom && hours === value}
-        onClick={() => { setCustom(false); setHours(value); setHoursText(String(value)); setRangeError(false); }}>
-        {value === 24 ? "1天" : `${value}小时`}
-      </button>)}
-      <button type="button" aria-pressed={custom} onClick={() => setCustom(true)}>自定义</button>
-    </div>
-    {custom && <label className="node-network-custom-range">小时
-      <input type="number" min={1} max={168} step={1} value={hoursText} aria-label="小时" aria-invalid={rangeError}
-        aria-describedby={rangeError ? rangeErrorId : undefined}
-        onChange={(event) => { setHoursText(event.target.value); setRangeError(false); }}
-        onBlur={commitHours} onKeyDown={(event) => {
-          if (event.key === "Enter") { event.preventDefault(); commitHours(); }
-        }} />
-      {rangeError && <span id={rangeErrorId} className="node-network-range-error" role="alert">请输入 1-168 的整数</span>}
-    </label>}
-  </div>;
+
+  const rangeControls = (
+    <NetworkRangeSelector
+      ranges={ranges}
+      value={hours}
+      onChange={setHours}
+      label="网络历史时间范围"
+    />
+  );
+
   return createPortal(
     <dialog ref={ref} className="node-network-dialog" aria-label={`${name} 网络`} onCancel={onClose}
       onClick={(event) => {

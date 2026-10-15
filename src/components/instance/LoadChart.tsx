@@ -535,7 +535,6 @@ export function LoadChart({
       title="资源趋势"
       aside={
         <div className="instance-chart-headmeta">
-          {rangeControls}
           <div className="instance-chart-meta" aria-label="图表数据范围">
             <span title={coverageSummary}>
               <strong>{coverageLabel ?? `覆盖 ${coverageSummary}`}</strong>
@@ -560,6 +559,7 @@ export function LoadChart({
             {isFetching ? "刷新中" : "刷新"}
           </button>
           <span className="instance-chart-range-chip">{rangeSummary}</span>
+          {rangeControls}
         </div>
       }
       className="instance-chart-panel"

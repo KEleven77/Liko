@@ -3,7 +3,6 @@ import {
   latencyHeatColor,
   lossHeatColor,
   speedRateColor,
-  speedRateColorFromBytes,
   trafficQuotaSegmentColor,
   trafficUsageColor,
 } from "@/utils/metricTone";
@@ -134,8 +133,4 @@ describe("speedRateColor", () => {
     expect(speedRateColor("")).toBe("var(--text-tertiary)");
   });
 
-  it("speedRateColorFromBytes routes raw bytes/sec through the unit tier", () => {
-    expect(speedRateColorFromBytes(0)).toBe("var(--speed-idle)");
-    expect(speedRateColorFromBytes(5 * 1024 * 1024)).toBe("var(--speed-high)");
-  });
 });

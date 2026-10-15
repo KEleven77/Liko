@@ -244,36 +244,6 @@ function canUseCanvasColor(color: string): boolean {
   }
 }
 
-function parseHexColor(color: string): { r: number; g: number; b: number } | null {
-  const value = color.trim();
-  const short = /^#([\da-f])([\da-f])([\da-f])$/i.exec(value);
-  if (short) {
-    return {
-      r: parseInt(`${short[1]}${short[1]}`, 16),
-      g: parseInt(`${short[2]}${short[2]}`, 16),
-      b: parseInt(`${short[3]}${short[3]}`, 16),
-    };
-  }
-  const full = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(value);
-  if (full) {
-    return {
-      r: parseInt(full[1], 16),
-      g: parseInt(full[2], 16),
-      b: parseInt(full[3], 16),
-    };
-  }
-  return null;
-}
-
-// Canvas 兼容旧 WebKit：用通道插值代替 color-mix()。
-export function mixSrgbTowardWhite(baseColor: string, baseWeight: number): string {
-  const rgb = parseHexColor(baseColor);
-  if (!rgb) return baseColor;
-  const w = Math.max(0, Math.min(1, baseWeight));
-  const channel = (value: number) => Math.round(value * w + 255 * (1 - w));
-  return `rgb(${channel(rgb.r)}, ${channel(rgb.g)}, ${channel(rgb.b)})`;
-}
-
 function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
   const sat = Math.max(0, Math.min(1, s / 100));
   const lig = Math.max(0, Math.min(1, l / 100));

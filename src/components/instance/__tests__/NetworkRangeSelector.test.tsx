@@ -40,4 +40,13 @@ it("supports a custom duration bounded by backend retention", () => {
   expect(html).toContain('aria-pressed="true">自定义</button>');
   expect(html).toContain('max="720"');
   expect(html).toContain('value="48"');
+  expect(html).toContain('<span>最近</span><input');
+  expect(html).toContain('/><span>小时</span></label>');
+});
+
+it("selects custom for a short duration without a matching preset", () => {
+  const html = renderToStaticMarkup(<NetworkRangeSelector ranges={buildPingTimeRangeOptions(168)} value={2} onChange={() => {}} />);
+  expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
+  expect(html).toContain('aria-pressed="true">自定义</button>');
+  expect(html).toContain('value="2"');
 });

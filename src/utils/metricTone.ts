@@ -1,5 +1,4 @@
 import { clamp, toHsl, toOklch } from "@/utils/hsl";
-import { formatByteRate } from "@/utils/format";
 
 // 丢包使用连续 HSL 热力渐变；延迟使用下方独立的离散监控状态阶梯。
 const HEAT_RAMP_SEGMENTS = [
@@ -96,10 +95,6 @@ const SPEED_RATE_COLOR: Record<string, string> = {
 
 export function speedRateColor(unit: string): string {
   return SPEED_RATE_COLOR[unit] ?? "var(--text-tertiary)";
-}
-
-export function speedRateColorFromBytes(bytesPerSec: number): string {
-  return speedRateColor(formatByteRate(bytesPerSec).unit);
 }
 
 export function lossHeatColor(pct: number | null | undefined): string {

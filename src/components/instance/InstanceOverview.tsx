@@ -31,10 +31,26 @@ export function InstanceOverview({ uuid, hours, active, rangeControls }: { uuid:
     const records = (history.data?.records ?? []).map((record) => ({ timeMs: toChartSeconds(record.time) * 1000, up: record.net_out ?? 0, down: record.net_in ?? 0 })).filter((point) => Number.isFinite(point.timeMs) && point.timeMs >= cutoff).sort((a, b) => a.timeMs - b.timeMs);
     if (hours <= 1 && live.uuid === uuid) {
       const lastHistoryTime = records.at(-1)?.timeMs ?? 0;
-      records.push(...live.points.filter((point) => point.timeMs >= cutoff && point.timeMs > lastHistoryTime));
+      for (const point of live.points) {
+        if (point.timeMs >= cutoff && point.timeMs > lastHistoryTime) records.push(point);
+      }
     }
-    const reduced = downsampleAligned(records.map((point) => point.timeMs), [records.map((point) => point.up), records.map((point) => point.down)], 360, true);
-    return reduced.times.map((timeMs, index) => ({ timeMs, up: reduced.perTask[0][index] ?? 0, down: reduced.perTask[1][index] ?? 0 }));
+    // 一次遍历拆分出 uPlot 需要的三条平行数组，避免三次 map 重复扫描。
+    const count = records.length;
+    const times = new Array<number>(count);
+    const up = new Array<number>(count);
+    const down = new Array<number>(count);
+    for (let index = 0; index < count; index += 1) {
+      const point = records[index];
+      times[index] = point.timeMs;
+      up[index] = point.up;
+      down[index] = point.down;
+    }
+    const reduced = downsampleAligned(times, [up, down], 360, true);
+    const reducedTimes = reduced.times;
+    const reducedUp = reduced.perTask[0];
+    const reducedDown = reduced.perTask[1];
+    return reducedTimes.map((timeMs, index) => ({ timeMs, up: reducedUp[index] ?? 0, down: reducedDown[index] ?? 0 }));
   }, [history.data, hours, live, uuid]);
   if (!meta || !metrics) return null;
   const traffic = resolveTrafficUsage(meta.traffic_limit_type, metrics.trafficUp, metrics.trafficDown, meta.traffic_limit);
@@ -47,7 +63,7 @@ export function InstanceOverview({ uuid, hours, active, rangeControls }: { uuid:
   ];
   return (
     <div className="instance-detail-overview">
-      <InstancePanel title={metrics.online ? "实时流量" : "最近上报流量"} className="instance-detail-live" aside={<div className="instance-detail-live-controls"><span className={metrics.online ? "is-online" : ""}>{metrics.online ? "实时更新" : "节点离线"}</span>{rangeControls}</div>}>
+      <InstancePanel title={metrics.online ? "实时流量" : "最近上报流量"} className="instance-detail-live" aside={<div className="instance-detail-live-controls">{rangeControls}<span className={metrics.online ? "is-online" : ""}>{metrics.online ? "实时更新" : "节点离线"}</span></div>}>
         <div className="instance-detail-rates">
           {[{ name: "上传", Icon: ArrowUp, rate: metrics.netUp, total: metrics.trafficUp, color: "var(--progress-cpu)" },
             { name: "下载", Icon: ArrowDown, rate: metrics.netDown, total: metrics.trafficDown, color: "var(--status-success)" }].map(({ name, Icon, rate, total, color }) => (
