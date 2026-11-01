@@ -204,8 +204,10 @@ export const CompactNodeCard = memo(function CompactNodeCard({
           key={`${tag.label}-${index}`}
           className="compact-node-tag"
           data-tag={tag.color}
+          data-long={tag.label.length > 4 || undefined}
+          title={tag.label}
           style={tag.label === node.group ? undefined : { "--tag-hue": tagHue(tag.label) } as CSSProperties}
-        >{tag.label}</span>)}</div>}
+        ><span>{tag.label}</span></span>)}</div>}
       </footer>
     </article>
   );

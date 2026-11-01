@@ -477,7 +477,25 @@
   white-space: nowrap;
 }
 
-.preview-node-tags { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 5px; min-width: 0; }
+.preview-node-tags {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+}
+.preview-node-tags .compact-node-tag {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+.preview-node-tags .compact-node-tag[data-long] { flex-shrink: 1; }
+.preview-node-tags .compact-node-tag > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Group tags keep their existing tokens; ordinary tags follow their text hue. */
 .preview-node-tags .compact-node-tag[style] {

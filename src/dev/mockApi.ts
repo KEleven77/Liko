@@ -214,7 +214,7 @@ const layoutSamples = [
   { uuid: "osaka-relay-01", name: "Osaka Relay", region: "JP", bandwidth: "100 Mbps", price: 0, tags: "中转<Cyan>" },
   { uuid: "london-edge-01", name: "London Edge Premium Long Machine Name", region: "GB", bandwidth: "10 Gbps", price: 1234.56, tags: "边缘<Cyan>; 高带宽<Teal>; 欧洲<Grass>; BGP<Plum>; 优选<Ruby>; 备用<Gold>" },
   { uuid: "seoul-api-01", name: "Seoul API", region: "KR", bandwidth: "500 Mbps", price: 8.5, tags: "API<Blue>; 亚洲<Mint>" },
-  { uuid: "los-angeles-core-01", name: "Los Angeles Core", region: "US", bandwidth: "2.5 Gbps", price: 99, tags: "核心<Crimson>; 美西<Sky>; 三网优化<Mint>" },
+  { uuid: "los-angeles-core-01", name: "Los Angeles Core", region: "US", bandwidth: "2.5 Gbps", price: 99, tags: "核心<Crimson>; 美西<Sky>; 三网优化<Mint>; CN2GT/163+10099/4837+CMI<Sky>" },
   { uuid: "paris-storage-01", name: "Paris Storage", region: "FR", bandwidth: "1 Gbps", price: 299.99, tags: "存储<Amber>; 归档<Brown>" },
   { uuid: "taipei-monitor-01", name: "Taipei Monitor", region: "TW", bandwidth: "300 Mbps", price: 15, tags: "监控<Blue>; 备用<Gold>; 亚洲<Mint>; IPv6<Plum>" },
 ];
