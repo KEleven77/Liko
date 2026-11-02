@@ -121,6 +121,7 @@ export interface ThemeSettings {
   homepagePingTaskIdsByClient?: Record<string, number[]>;
   enableHomepageMultiPing?: boolean;
   homepageMultiPingTaskIds?: number[];
+  homepageIpv6PingTaskIds?: number[];
   homepagePingDisplayMode?: "bars" | "sparkline";
   fakePingForUnbound?: boolean;
   showHomeOverview?: boolean;

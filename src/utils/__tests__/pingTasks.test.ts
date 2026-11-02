@@ -9,8 +9,45 @@ import {
   hasHomepagePingTaskBinding,
   normalizeHomepagePingTaskBindings,
   resolveHomepagePingSelections,
+  resolveIpv6HomepageTaskIds,
   resolveHomepagePingTaskIdsByClient,
 } from "@/utils/pingTasks";
+
+describe("IPv6 homepage defaults", () => {
+  const tasks = [
+    { id: 11, target: "1.1.1.1", name: "v4", clients: ["node"], weight: 1 },
+    { id: 12, target: "8.8.8.8", name: "v4", clients: ["node"], weight: 2 },
+    { id: 13, target: "9.9.9.9:80", name: "v4", clients: ["node"], weight: 3 },
+    { id: 14, target: "1.0.0.1", name: "backup", clients: ["node"], weight: 4 },
+    { id: 61, target: "2001:db8::1", name: "v6", clients: ["node"], weight: 6 },
+    { id: 62, target: "v6.example.com", name: "联通V6", clients: ["node"], weight: 7 },
+    { id: 63, target: "2001:db8::3", name: "v6", clients: ["node"], weight: 8 },
+    { id: 64, target: "2001:db8::4", name: "v6", clients: ["other"], weight: 0 },
+  ];
+  it("selects three IPv4 and three assigned IPv6 tasks using actual task IDs", () => {
+    expect(resolveIpv6HomepageTaskIds("node", "2001:db8::10", [12, 11, 13], tasks))
+      .toEqual([12, 11, 13, 61, 62, 63]);
+  });
+  it("keeps defaults without an IPv6 address or an assigned IPv6 monitor", () => {
+    const defaults = [11, 12, 13];
+    expect(resolveIpv6HomepageTaskIds("node", "", defaults, tasks)).toBe(defaults);
+    expect(resolveIpv6HomepageTaskIds("unbound", "2001:db8::10", defaults, tasks)).toBe(defaults);
+  });
+  it("only includes available monitors when fewer than six are assigned", () => {
+    expect(resolveIpv6HomepageTaskIds("node", "2001:db8::10", [11, 12, 13], [tasks[0]!, tasks[4]!]))
+      .toEqual([11, 61]);
+  });
+  it("uses configured IPv6 order and reserves explicit slots during automatic selection", () => {
+    expect(resolveIpv6HomepageTaskIds("node", "2001:db8::10", [11, 12, 13], tasks, [63, 61, 62]))
+      .toEqual([11, 12, 13, 63, 61, 62]);
+    expect(resolveIpv6HomepageTaskIds("node", "2001:db8::10", [11, 12, 13], tasks, [0, 61, 0]))
+      .toEqual([11, 12, 13, 62, 61, 63]);
+  });
+  it("does not replace an unavailable explicitly configured IPv6 task", () => {
+    expect(resolveIpv6HomepageTaskIds("node", "2001:db8::10", [11, 12, 13], tasks, [64, 63, 62]))
+      .toEqual([11, 12, 13, 63, 62]);
+  });
+});
 
 describe("homepage ping task bindings", () => {
   it("accepts only positive decimal safe integers", () => {

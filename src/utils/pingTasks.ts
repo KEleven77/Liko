@@ -18,6 +18,34 @@ export function isHomepageMultiPingConfigured(taskIds: readonly number[]): boole
 /** 默认三条线路（1, 2, 3） */
 export const DEFAULT_HOMEPAGE_MULTI_PING_TASK_IDS: readonly number[] = [1, 2, 3];
 
+export function isIpv6PingTask(task: { target: string; name: string }): boolean {
+  return (task.target.match(/:/g)?.length ?? 0) >= 2 || /ipv6|(?:^|[^a-z])v6(?:$|[^a-z])/i.test(task.name);
+}
+
+export function resolveIpv6HomepageTaskIds(
+  uuid: string,
+  ipv6: string | undefined,
+  defaults: number[],
+  tasks: { id: number; name: string; target: string; clients: string[]; weight: number }[],
+  preferredIpv6: number[] = [],
+): number[] {
+  if (!ipv6?.trim()) return defaults;
+  const available = tasks.filter((task) => task.clients.includes(uuid))
+    .sort((a, b) => a.weight - b.weight || a.id - b.id);
+  const candidates = available.filter(isIpv6PingTask).map((task) => task.id);
+  const v6: number[] = [];
+  for (let slot = 0; slot < 3; slot++) {
+    const preferred = preferredIpv6[slot] ?? 0;
+    const id = preferred > 0 ? preferred : candidates.find((id) => !v6.includes(id) && !preferredIpv6.includes(id));
+    if (id != null && candidates.includes(id) && !v6.includes(id)) v6.push(id);
+  }
+  if (!v6.length) return defaults;
+  const v4 = available.filter((task) => !isIpv6PingTask(task));
+  const v4Ids = v4.map((task) => task.id);
+  const selectedV4 = [...new Set([...defaults.filter((id) => v4Ids.includes(id)), ...v4Ids])].slice(0, 3);
+  return [...selectedV4, ...v6];
+}
+
 export function normalizeDefaultHomepagePingTaskIds(value: unknown): number[] {
   const selected = normalizeHomepageMultiPingTaskIds(value);
   for (const taskId of DEFAULT_HOMEPAGE_MULTI_PING_TASK_IDS) {

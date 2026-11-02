@@ -1,7 +1,8 @@
 import { useCallback, useLayoutEffect, useMemo, useSyncExternalStore } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMinuteClock } from "@/hooks/useClock";
-import { useVisibleNodeUuids } from "@/hooks/useNode";
+import { useAllNodeMeta, useVisibleNodeUuids } from "@/hooks/useNode";
+import { usePublicPingTasks } from "@/hooks/usePublicPingTasks";
 import { useHiddenNodeUuids } from "@/hooks/useVisibleNodes";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import {
@@ -22,6 +23,7 @@ import { resolvePingSampleCounts } from "@/utils/pingMetrics";
 import {
   isHomepageMultiPingConfigured,
   resolveHomepagePingSelections,
+  resolveIpv6HomepageTaskIds,
   type HomepagePingTaskBindings,
   type HomepagePingTaskIdsByClient,
 } from "@/utils/pingTasks";
@@ -1224,7 +1226,20 @@ export function useHomepagePingOverview(viewMode: NodeViewMode) {
     requestMode === "multi"
       ? themeSettings.homepageMultiPingTaskIds
       : EMPTY_TASK_IDS;
-  const requestedTaskIdsByClient = themeSettings.homepagePingTaskIdsByClient;
+  const nodeMeta = useAllNodeMeta();
+  const publicTasks = usePublicPingTasks(themeSettings.isReady && requestMode === "multi" &&
+    nodeMeta.some((node) => effectiveUuids.includes(node.uuid) && Boolean(node.ipv6?.trim()) &&
+      !Object.hasOwn(themeSettings.homepagePingTaskIdsByClient, node.uuid)));
+  const requestedTaskIdsByClient = useMemo(() => {
+    const selections = { ...themeSettings.homepagePingTaskIdsByClient };
+    if (requestMode !== "multi" || !publicTasks.data) return selections;
+    for (const node of nodeMeta) {
+      if (!effectiveUuids.includes(node.uuid) || Object.hasOwn(selections, node.uuid)) continue;
+      const ids = resolveIpv6HomepageTaskIds(node.uuid, node.ipv6, requestedMultiTaskIds, publicTasks.data, themeSettings.homepageIpv6PingTaskIds);
+      if (ids !== requestedMultiTaskIds) selections[node.uuid] = ids;
+    }
+    return selections;
+  }, [themeSettings.homepagePingTaskIdsByClient, themeSettings.homepageIpv6PingTaskIds, requestMode, publicTasks.data, nodeMeta, effectiveUuids, requestedMultiTaskIds]);
   const hasRequestedVisiblePing =
     resolvePingAssignmentKey(
       effectiveUuids,

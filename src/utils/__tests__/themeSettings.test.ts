@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { normalizeThemeSettings } from "@/utils/themeSettings";
 
 describe("normalizeThemeSettings", () => {
+  it("defaults IPv6 slots to automatic and preserves configured positions", () => {
+    expect(normalizeThemeSettings({}).homepageIpv6PingTaskIds).toEqual([0, 0, 0]);
+    expect(normalizeThemeSettings({ homepageIpv6PingTaskIds: [63, 0, 61] }).homepageIpv6PingTaskIds)
+      .toEqual([63, 0, 61]);
+    expect(normalizeThemeSettings({ homepageIpv6PingTaskIds: [-1, 1.5, 62, 63] }).homepageIpv6PingTaskIds)
+      .toEqual([0, 0, 62]);
+  });
   it("migrates retired large card settings to standard cards", () => {
     const settings = normalizeThemeSettings({
       desktopNodeViewMode: "large",

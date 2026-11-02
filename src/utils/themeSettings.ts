@@ -45,6 +45,7 @@ export interface ResolvedThemeSettings {
   homepagePingTaskIdsByClient: HomepagePingTaskIdsByClient;
   enableHomepageMultiPing: boolean;
   homepageMultiPingTaskIds: number[];
+  homepageIpv6PingTaskIds: number[];
   homepagePingDisplayMode: HomepagePingDisplayMode;
   fakePingForUnbound: boolean;
   showHomeOverview: boolean;
@@ -86,6 +87,7 @@ export const DEFAULT_THEME_SETTINGS: ResolvedThemeSettings = {
   homepagePingTaskIdsByClient: {},
   enableHomepageMultiPing: true,
   homepageMultiPingTaskIds: [...DEFAULT_HOMEPAGE_MULTI_PING_TASK_IDS],
+  homepageIpv6PingTaskIds: [0, 0, 0],
   homepagePingDisplayMode: "bars",
   fakePingForUnbound: false,
   showHomeOverview: true,
@@ -197,6 +199,10 @@ export function normalizeThemeSettings(
     ),
     enableHomepageMultiPing: true,
     homepageMultiPingTaskIds,
+    homepageIpv6PingTaskIds: Array.from({ length: 3 }, (_, slot) => {
+      const id = settings?.homepageIpv6PingTaskIds?.[slot];
+      return typeof id === "number" && Number.isSafeInteger(id) && id > 0 ? id : 0;
+    }),
     homepagePingDisplayMode: settings?.homepagePingDisplayMode === "sparkline" ? "sparkline" : "bars",
     // 默认关闭(需手动开启):给访客展示的是模拟数据,必须由站长显式决定。
     fakePingForUnbound: settings?.fakePingForUnbound === true,

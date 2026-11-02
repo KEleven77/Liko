@@ -603,7 +603,7 @@ async function queryMetricPayload(
   }
 }
 
-function loadPublicPingTasks() {
+export function loadPublicPingTasks() {
   if (publicPingTasksCache && Date.now() - publicPingTasksCachedAt < 60_000) {
     return Promise.resolve(publicPingTasksCache);
   }

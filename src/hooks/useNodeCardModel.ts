@@ -12,6 +12,7 @@ import {
 } from "@/hooks/usePingOverview";
 import { useThemeSettings } from "@/hooks/useThemeSettings";
 import { usePriceVisibility } from "@/hooks/usePriceVisibility";
+import { usePublicPingTasks } from "@/hooks/usePublicPingTasks";
 import type { HomepagePingDisplayLine, HomepagePingLine } from "@/types/komari";
 import { formatCompactRenewalPrice, formatRenewalPrice, formatRemainingValue, resolveCurrencySymbol } from "@/utils/billing";
 import { getExpireTextColor } from "@/utils/expireStatus";
@@ -33,6 +34,7 @@ import { resolveOsInfo } from "@/components/ui/OsLogo";
 import {
   hasHomepagePingTaskBinding,
   isHomepageMultiPingConfigured,
+  resolveIpv6HomepageTaskIds,
 } from "@/utils/pingTasks";
 
 const EMPTY_PING_TASK_IDS: number[] = [];
@@ -66,6 +68,7 @@ export function useNodeCardModel(
     homepagePingTaskIdsByClient,
     enableHomepageMultiPing,
     homepageMultiPingTaskIds,
+    homepageIpv6PingTaskIds,
     cardCurrency,
     costRateApiUrl,
   } = useThemeSettings();
@@ -83,9 +86,13 @@ export function useNodeCardModel(
     enableHomepageMultiPing &&
     isHomepageMultiPingConfigured(homepageMultiPingTaskIds);
   const hasNodePingOverride = Object.hasOwn(homepagePingTaskIdsByClient, uuid);
+  const publicTasks = usePublicPingTasks(enableHomepageMultiPing && !hasNodePingOverride && Boolean(meta?.ipv6?.trim()));
+  const defaultTaskIds = useMemo(() => resolveIpv6HomepageTaskIds(
+    uuid, meta?.ipv6, homepageMultiPingTaskIds, publicTasks.data ?? [], homepageIpv6PingTaskIds,
+  ), [uuid, meta?.ipv6, homepageMultiPingTaskIds, publicTasks.data, homepageIpv6PingTaskIds]);
   const nodePingTaskIds = hasNodePingOverride
     ? homepagePingTaskIdsByClient[uuid] ?? EMPTY_PING_TASK_IDS
-    : homepageMultiPingTaskIds;
+    : defaultTaskIds;
   const nodeMultiPingConfigured = hasNodePingOverride
     ? nodePingTaskIds.length > 0
     : multiPingConfigured;

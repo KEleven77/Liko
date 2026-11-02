@@ -57,6 +57,7 @@ import {
 } from "@/utils/homeNodes";
 import {
   assignHomepageMultiPingTask,
+  isIpv6PingTask,
   HOMEPAGE_MULTI_PING_MAX_COUNT,
   HOMEPAGE_MULTI_PING_TASK_COUNT,
   normalizeDefaultHomepagePingTaskIds,
@@ -189,6 +190,7 @@ function pickManagedThemeSettings(settings: ResolvedThemeSettings) {
     homepagePingTaskIdsByClient: settings.homepagePingTaskIdsByClient,
     enableHomepageMultiPing: settings.enableHomepageMultiPing,
     homepageMultiPingTaskIds: settings.homepageMultiPingTaskIds,
+    homepageIpv6PingTaskIds: settings.homepageIpv6PingTaskIds,
     homepagePingDisplayMode: settings.homepagePingDisplayMode,
     fakePingForUnbound: settings.fakePingForUnbound,
     showHomeOverview: settings.showHomeOverview,
@@ -1664,6 +1666,36 @@ export function ThemeManage() {
                           请选择 {HOMEPAGE_MULTI_PING_TASK_COUNT} 条默认展示线路。
                         </p>
                       )}
+                    </div>
+                    <div className="surface-inset flex flex-col gap-3 px-4 py-4">
+                      <div>
+                        <span className="setting-subhead-title">默认三条 IPv6 探测线路</span>
+                        <p className="setting-hint mt-1">有 IPv6 且未单独配置的服务器，将在默认线路后显示这些 IPv6 检测。任务须在 Lite 后台分配给对应服务器；自动选择会按任务顺序补充可用的 IPv6 线路。</p>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {draft.homepageIpv6PingTaskIds.map((taskId, slot) => (
+                          <div key={slot} className="flex items-center justify-between gap-2 rounded-[10px] border border-(--hairline) px-3 py-2 min-w-0">
+                            <span className="text-[12px] font-medium text-(--text-secondary) shrink-0">槽位 #{slot + 1}</span>
+                            <SettingSelect value={String(taskId)} aria-label={`默认 IPv6 探测线路 ${slot + 1}`}
+                              wrapperClassName="flex-1 min-w-0"
+                              onChange={(event) => {
+                                const id = Number(event.target.value);
+                                const next = [...draft.homepageIpv6PingTaskIds];
+                                const previousSlot = id > 0 ? next.indexOf(id) : -1;
+                                if (previousSlot >= 0 && previousSlot !== slot) next[previousSlot] = next[slot]!;
+                                next[slot] = id;
+                                patch("homepageIpv6PingTaskIds", next);
+                              }}>
+                              <option value="0">自动选择 IPv6 线路</option>
+                              {taskId > 0 && !sortedTasks.some((task) => task.id === taskId && isIpv6PingTask(task)) &&
+                                <option value={taskId}>线路 #{taskId}（不可用）</option>}
+                              {sortedTasks.filter(isIpv6PingTask).map((task) => (
+                                <option key={task.id} value={task.id}>{task.name || `线路 #${task.id}`}</option>
+                              ))}
+                            </SettingSelect>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                 </div>
               </InstancePanel>
