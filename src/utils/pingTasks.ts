@@ -18,6 +18,25 @@ export function isHomepageMultiPingConfigured(taskIds: readonly number[]): boole
 /** 默认三条线路（1, 2, 3） */
 export const DEFAULT_HOMEPAGE_MULTI_PING_TASK_IDS: readonly number[] = [1, 2, 3];
 
+export function comparePingTasks(
+  left: { id: number; weight: number; name: string },
+  right: { id: number; weight: number; name: string },
+) {
+  return left.weight - right.weight || left.id - right.id || left.name.localeCompare(right.name);
+}
+
+export function sortHomepagePingTaskIds(
+  ids: number[], tasks: { id: number; weight: number; name: string }[],
+): number[] {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  return [...ids].sort((left, right) => {
+    const a = byId.get(left);
+    const b = byId.get(right);
+    if (!a || !b) return a ? -1 : b ? 1 : 0;
+    return comparePingTasks(a, b);
+  });
+}
+
 export function isIpv6PingTask(task: { target: string; name: string }): boolean {
   return (task.target.match(/:/g)?.length ?? 0) >= 2 || /ipv6|(?:^|[^a-z])v6(?:$|[^a-z])/i.test(task.name);
 }
@@ -31,7 +50,7 @@ export function resolveIpv6HomepageTaskIds(
 ): number[] {
   if (!ipv6?.trim()) return defaults;
   const available = tasks.filter((task) => task.clients.includes(uuid))
-    .sort((a, b) => a.weight - b.weight || a.id - b.id);
+    .sort(comparePingTasks);
   const candidates = available.filter(isIpv6PingTask).map((task) => task.id);
   const v6: number[] = [];
   for (let slot = 0; slot < 3; slot++) {

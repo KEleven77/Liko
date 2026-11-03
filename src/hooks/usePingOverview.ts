@@ -24,6 +24,7 @@ import {
   isHomepageMultiPingConfigured,
   resolveHomepagePingSelections,
   resolveIpv6HomepageTaskIds,
+  sortHomepagePingTaskIds,
   type HomepagePingTaskBindings,
   type HomepagePingTaskIdsByClient,
 } from "@/utils/pingTasks";
@@ -1227,16 +1228,19 @@ export function useHomepagePingOverview(viewMode: NodeViewMode) {
       ? themeSettings.homepageMultiPingTaskIds
       : EMPTY_TASK_IDS;
   const nodeMeta = useAllNodeMeta();
-  const publicTasks = usePublicPingTasks(themeSettings.isReady && requestMode === "multi" &&
-    nodeMeta.some((node) => effectiveUuids.includes(node.uuid) && Boolean(node.ipv6?.trim()) &&
-      !Object.hasOwn(themeSettings.homepagePingTaskIdsByClient, node.uuid)));
+  const publicTasks = usePublicPingTasks(themeSettings.isReady && effectiveUuids.length > 0 &&
+    (requestMode === "multi" || effectiveUuids.some((uuid) => themeSettings.homepagePingTaskIdsByClient[uuid]?.length)));
   const requestedTaskIdsByClient = useMemo(() => {
     const selections = { ...themeSettings.homepagePingTaskIdsByClient };
-    if (requestMode !== "multi" || !publicTasks.data) return selections;
+    if (!publicTasks.data) return selections;
+    for (const uuid of effectiveUuids) {
+      if (Object.hasOwn(selections, uuid)) selections[uuid] = sortHomepagePingTaskIds(selections[uuid]!, publicTasks.data);
+    }
+    if (requestMode !== "multi") return selections;
     for (const node of nodeMeta) {
       if (!effectiveUuids.includes(node.uuid) || Object.hasOwn(selections, node.uuid)) continue;
       const ids = resolveIpv6HomepageTaskIds(node.uuid, node.ipv6, requestedMultiTaskIds, publicTasks.data, themeSettings.homepageIpv6PingTaskIds);
-      if (ids !== requestedMultiTaskIds) selections[node.uuid] = ids;
+      selections[node.uuid] = sortHomepagePingTaskIds(ids, publicTasks.data);
     }
     return selections;
   }, [themeSettings.homepagePingTaskIdsByClient, themeSettings.homepageIpv6PingTaskIds, requestMode, publicTasks.data, nodeMeta, effectiveUuids, requestedMultiTaskIds]);

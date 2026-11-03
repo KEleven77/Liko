@@ -35,6 +35,7 @@ import {
   hasHomepagePingTaskBinding,
   isHomepageMultiPingConfigured,
   resolveIpv6HomepageTaskIds,
+  sortHomepagePingTaskIds,
 } from "@/utils/pingTasks";
 
 const EMPTY_PING_TASK_IDS: number[] = [];
@@ -86,13 +87,15 @@ export function useNodeCardModel(
     enableHomepageMultiPing &&
     isHomepageMultiPingConfigured(homepageMultiPingTaskIds);
   const hasNodePingOverride = Object.hasOwn(homepagePingTaskIdsByClient, uuid);
-  const publicTasks = usePublicPingTasks(enableHomepageMultiPing && !hasNodePingOverride && Boolean(meta?.ipv6?.trim()));
+  const publicTasks = usePublicPingTasks(hasNodePingOverride
+    ? Boolean(homepagePingTaskIdsByClient[uuid]?.length) : multiPingConfigured);
   const defaultTaskIds = useMemo(() => resolveIpv6HomepageTaskIds(
     uuid, meta?.ipv6, homepageMultiPingTaskIds, publicTasks.data ?? [], homepageIpv6PingTaskIds,
   ), [uuid, meta?.ipv6, homepageMultiPingTaskIds, publicTasks.data, homepageIpv6PingTaskIds]);
-  const nodePingTaskIds = hasNodePingOverride
-    ? homepagePingTaskIdsByClient[uuid] ?? EMPTY_PING_TASK_IDS
-    : defaultTaskIds;
+  const nodePingTaskIds = useMemo(() => sortHomepagePingTaskIds(
+    hasNodePingOverride ? homepagePingTaskIdsByClient[uuid] ?? EMPTY_PING_TASK_IDS : defaultTaskIds,
+    publicTasks.data ?? [],
+  ), [hasNodePingOverride, homepagePingTaskIdsByClient, uuid, defaultTaskIds, publicTasks.data]);
   const nodeMultiPingConfigured = hasNodePingOverride
     ? nodePingTaskIds.length > 0
     : multiPingConfigured;

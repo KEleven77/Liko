@@ -10,8 +10,28 @@ import {
   normalizeHomepagePingTaskBindings,
   resolveHomepagePingSelections,
   resolveIpv6HomepageTaskIds,
+  sortHomepagePingTaskIds,
   resolveHomepagePingTaskIdsByClient,
 } from "@/utils/pingTasks";
+
+describe("homepage task order", () => {
+  it("matches backend weight and ID order across IPv4 and IPv6 selections", () => {
+    const selected = [61, 3, 2, 1];
+    const tasks = [
+      { id: 1, weight: 30, name: "电信" },
+      { id: 2, weight: 10, name: "联通" },
+      { id: 3, weight: 10, name: "移动" },
+      { id: 61, weight: 20, name: "电信V6" },
+    ];
+    expect(sortHomepagePingTaskIds(selected, tasks)).toEqual([2, 3, 61, 1]);
+    expect(selected).toEqual([61, 3, 2, 1]);
+  });
+  it("retains unavailable tasks after known tasks without losing selections", () => {
+    expect(sortHomepagePingTaskIds([90, 1, 80], [{ id: 1, weight: 10, name: "电信" }]))
+      .toEqual([1, 90, 80]);
+    expect(sortHomepagePingTaskIds([3, 1, 2], [])).toEqual([3, 1, 2]);
+  });
+});
 
 describe("IPv6 homepage defaults", () => {
   const tasks = [

@@ -57,6 +57,7 @@ import {
 } from "@/utils/homeNodes";
 import {
   assignHomepageMultiPingTask,
+  comparePingTasks,
   isIpv6PingTask,
   HOMEPAGE_MULTI_PING_MAX_COUNT,
   HOMEPAGE_MULTI_PING_TASK_COUNT,
@@ -124,11 +125,7 @@ const OVERVIEW_RATING_LABEL_FIELDS: Array<{
 ];
 
 function sortTasks(tasks: PingTask[]) {
-  return [...tasks].sort((left, right) => {
-    if (left.weight !== right.weight) return left.weight - right.weight;
-    if (left.id !== right.id) return left.id - right.id;
-    return left.name.localeCompare(right.name);
-  });
+  return [...tasks].sort(comparePingTasks);
 }
 
 function buildPremiumEntry(
@@ -1633,7 +1630,7 @@ export function ThemeManage() {
                         <div>
                           <span className="setting-subhead-title">默认三条探测线路</span>
                           <p className="setting-hint mt-1">
-                            未单独配置的卡片将依序显示这些线路的延迟柱条或色块。
+                            未单独配置的卡片将显示这些线路，展示顺序与后台任务排序一致。
                           </p>
                         </div>
                       </div>
@@ -1670,7 +1667,7 @@ export function ThemeManage() {
                     <div className="surface-inset flex flex-col gap-3 px-4 py-4">
                       <div>
                         <span className="setting-subhead-title">默认三条 IPv6 探测线路</span>
-                        <p className="setting-hint mt-1">有 IPv6 且未单独配置的服务器，将在默认线路后显示这些 IPv6 检测。任务须在 Lite 后台分配给对应服务器；自动选择会按任务顺序补充可用的 IPv6 线路。</p>
+                        <p className="setting-hint mt-1">有 IPv6 且未单独配置的服务器，将补充这些 IPv6 检测，并与其他线路一起按后台任务顺序展示。任务须在 Lite 后台分配给对应服务器；自动选择会按任务顺序补充可用的 IPv6 线路。</p>
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
                         {draft.homepageIpv6PingTaskIds.map((taskId, slot) => (
