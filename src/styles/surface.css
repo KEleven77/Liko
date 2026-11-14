@@ -599,6 +599,29 @@
   font-variant-numeric: tabular-nums;
 }
 
+.server-ping-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.server-ping-options .server-ping-option {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 32px;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.server-ping-option:focus-within {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 1px;
+}
+
 .theme-manage-toolbar-actions {
   display: inline-flex;
   flex-wrap: wrap;

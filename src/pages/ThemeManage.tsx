@@ -59,6 +59,8 @@ import {
   assignHomepageMultiPingTask,
   comparePingTasks,
   isIpv6PingTask,
+  resolveIpv6HomepageTaskIds,
+  sortHomepagePingTaskIds,
   HOMEPAGE_MULTI_PING_MAX_COUNT,
   HOMEPAGE_MULTI_PING_TASK_COUNT,
   normalizeDefaultHomepagePingTaskIds,
@@ -674,6 +676,12 @@ export function ThemeManage() {
     staleTime: 60_000,
     retry: 1,
   });
+  const serverPingDefaults = useMemo(() => new Map(allMeta.map((node) => [
+    node.uuid,
+    sortHomepagePingTaskIds(resolveIpv6HomepageTaskIds(
+      node.uuid, node.ipv6, draft.homepageMultiPingTaskIds, sortedTasks, draft.homepageIpv6PingTaskIds,
+    ), sortedTasks),
+  ])), [allMeta, draft.homepageMultiPingTaskIds, draft.homepageIpv6PingTaskIds, sortedTasks]);
   const premiumRateQuery = useQuery({
     queryKey: ["cost-rates", sourceThemeSettings.costRateApiUrl],
     queryFn: ({ signal }) => getExchangeRates(sourceThemeSettings.costRateApiUrl, { signal }),
@@ -1537,7 +1545,7 @@ export function ThemeManage() {
                     <div>
                       <span className="setting-subhead-title">逐服务器自定义探测线路</span>
                       <p className="setting-hint mt-1">
-                        未单独配置的服务器显示下方默认三条线路。单独配置后仅显示勾选的任务，可选择 1 到 8 条。任务本身仍须在 Lite 后台配置监测该服务器。
+                        未单独配置的服务器自动勾选默认线路；有 IPv6 时同时勾选已分配的默认 IPv6 线路，与首页显示一致。单独配置后仅显示勾选的任务，可选择 1 到 8 条。任务本身仍须在 Lite 后台配置监测该服务器。
                       </p>
                     </div>
                     <label className="surface-inset flex items-center gap-2 px-3 py-2">
@@ -1557,7 +1565,7 @@ export function ThemeManage() {
                       );
                       const selectedIds = hasOverride
                         ? draft.homepagePingTaskIdsByClient[client.uuid] ?? []
-                        : draft.homepageMultiPingTaskIds;
+                        : serverPingDefaults.get(client.uuid) ?? draft.homepageMultiPingTaskIds;
                       return (
                         <details
                           key={client.uuid}
@@ -1583,13 +1591,14 @@ export function ThemeManage() {
                               </button>
                             )}
                           </summary>
-                          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          <div className="server-ping-options">
                             {sortedTasks.map((task) => {
                               const checked = selectedIds.includes(task.id);
                               return (
                                 <label
                                   key={task.id}
-                                  className="surface-inset flex min-w-0 cursor-pointer items-start gap-2 px-3 py-2"
+                                  className="surface-inset server-ping-option"
+                                  title={task.name || `线路 #${task.id}`}
                                 >
                                   <input
                                     type="checkbox"
@@ -1601,14 +1610,11 @@ export function ThemeManage() {
                                         : [...selectedIds, task.id];
                                       patchNodePingTasks(client.uuid, next);
                                     }}
-                                    className="mt-0.5 accent-(--accent-500)"
+                                    className="shrink-0 accent-(--accent-500)"
                                   />
                                   <span className="min-w-0">
-                                    <span className="block truncate text-[12px] font-medium">
+                                    <span className="block truncate text-[12px] leading-4 font-medium">
                                       {task.name || `线路 #${task.id}`}
-                                    </span>
-                                    <span className="block truncate text-[11px] text-(--text-tertiary)">
-                                      {task.type.toUpperCase()} · {task.target}
                                     </span>
                                   </span>
                                 </label>
